@@ -7,7 +7,7 @@ env = gym.make('Hopper-v2')
 env.reset()
 
 
-saver = utils.VideoSaver("/home/duju/libtest.avi", 500, 1000, 1000)
+saver = utils.VideoSaver("/home/duju/libtest.avi", source_fps=500, target_fps=30 , width=1000, height=1000)
 
 for _ in range(10000):
     frame=env.render(mode='rgb_array',width=1000,height=1000)
