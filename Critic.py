@@ -1,5 +1,6 @@
 import tflearn
 import tensorflow as tf
+import numpy as np
 
 class Critic(object):
     """
@@ -45,12 +46,12 @@ class Critic(object):
             inputs = tflearn.input_data(shape=[None, *self.state_dim])
             action = tflearn.input_data(shape=[None, self.action_dim])
 
-            net = tflearn.conv_2d(incoming=inputs, nb_filter=32, filter_size=7, activation='ReLU')
-            net = tflearn.conv_2d(incoming=net, nb_filter=32, filter_size=7, activation='ReLU')
-            net = tflearn.conv_2d(incoming=net, nb_filter=32, filter_size=7, activation='ReLU')
+            net = tflearn.conv_2d(incoming=inputs, nb_filter=16, filter_size=7, activation='ReLU')
+            net = tflearn.conv_2d(incoming=net, nb_filter=16, filter_size=7, activation='ReLU')
+            net = tflearn.conv_2d(incoming=net, nb_filter=16, filter_size=7, activation='ReLU')
 
-            t1 = tflearn.fully_connected(net, 300, activation='ReLU')
-            t2 = tflearn.fully_connected(action, 300, activation='ReLU')
+            t1 = tflearn.fully_connected(net, 100, activation='ReLU')
+            t2 = tflearn.fully_connected(action, 100, activation='ReLU')
 
             net = tflearn.layers.merge_ops.merge([t1,t2],mode="concat",axis=1)
 
@@ -65,10 +66,11 @@ class Critic(object):
             assert 0 == 1, "error in create_critic_network, state_dim not matches"
 
     def train(self, inputs, action, predicted_q_value):
+
         return self.sess.run([self.out, self.optimize], feed_dict={
             self.inputs : inputs,
             self.action : action,
-            self.predicted_q_values: predicted_q_value
+            self.predicted_q_value : predicted_q_value
         })
 
 
@@ -81,7 +83,7 @@ class Critic(object):
     def predict_target(self,inputs,action):
         return self.sess.run(self.target_out, feed_dict={
             self.target_inputs: inputs,
-            self.taget_action: action
+            self.target_action: action
         })
 
     def action_gradients(self, inputs, actions):

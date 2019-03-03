@@ -33,21 +33,27 @@ class Actor(object):
 
         self.action_gradient = tf.placeholder(tf.float32, [None, self.action_dim])
 
-        self.actor_gradients = tf.gradients(self.out, self.network_params, -self.action_gradient) / 
+        self.actor_gradients = list(
+            map(
+                lambda x: tf.div(x, self.batch_size),
+            tf.gradients(self.out, self.network_params, -self.action_gradient)
+            )
+        )
 
+        self.optimize = tf.train.AdamOptimizer(self.learning_rate).\
+            apply_gradients(zip(self.actor_gradients,self.network_params))
 
-
-
+        self.num_trainable_vars = len(self.network_params) + len(self.target_network_params)
 
     def create_actor_network(self):
 
         if len(self.state_dim) == 3:
             inputs = tflearn.input_data(shape=[None,*(self.state_dim)])
-            net = tflearn.layers.conv.conv_2d(incoming=inputs, nb_filter = 32, filter_size = 7, activation='ReLU')
-            net = tflearn.layers.conv.conv_2d(incoming=net, nb_filter = 32, filter_size = 7, activation = 'ReLU')
-            net = tflearn.layers.conv.conv_2d(incoming=net, nb_filter = 32, filter_size =7, activation = 'ReLU')
-            net = tflearn.fully_connected(net, 200 ,activation='ReLU')
-            net = tflearn.fully_connected(net, 200, activation='ReLU')
+            net = tflearn.layers.conv.conv_2d(incoming=inputs, nb_filter = 16, filter_size = 7, activation='ReLU')
+            net = tflearn.layers.conv.conv_2d(incoming=net, nb_filter = 16, filter_size = 7, activation = 'ReLU')
+            net = tflearn.layers.conv.conv_2d(incoming=net, nb_filter = 16, filter_size =7, activation = 'ReLU')
+            net = tflearn.fully_connected(net, 100 ,activation='ReLU')
+            net = tflearn.fully_connected(net, 100, activation='ReLU')
 
             w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
 
@@ -58,3 +64,24 @@ class Actor(object):
             assert 1 == 0, "wrong state dim input"
 
 
+    def train(self, inputs, a_gradient):
+        self.sess.run(self.optimize, feed_dict ={
+            self.inputs: inputs,
+            self.action_gradient: a_gradient
+        })
+
+    def predict(self, inputs):
+        return self.sess.run(self.out, feed_dict={
+            self.inputs: inputs
+        })
+
+    def predict_target(self, inputs):
+        return self.sess.run(self.target_out, feed_dict={
+            self.target_inputs: inputs
+        })
+
+    def update_target_network(self):
+        self.sess.run(self.update_target_network_params)
+
+    def get_num_trainable_vars(self):
+        return self.num_trainable_vars
