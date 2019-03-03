@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="205ba7ca-3472-4529-ad38-1e1acd80cea2" name="Default Changelist" comment="" />
+    <list default="true" id="205ba7ca-3472-4529-ad38-1e1acd80cea2" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MADDPG.py" beforeDir="false" afterPath="$PROJECT_DIR$/MADDPG.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MUJOCO_LOG.TXT" beforeDir="false" afterPath="$PROJECT_DIR$/MUJOCO_LOG.TXT" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gym_render_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/gym_render_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/suite_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/suite_test.py" afterDir="false" />
+    </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -11,12 +17,60 @@
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/utils.py">
+        <entry file="file://$PROJECT_DIR$/suite_test.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="315">
-              <caret line="21" column="13" lean-forward="true" selection-start-line="21" selection-start-column="13" selection-end-line="21" selection-end-column="13" />
+            <state relative-caret-position="135">
+              <caret line="9" selection-start-line="9" selection-end-line="9" />
               <folding>
-                <element signature="e#0#10#0" expanded="true" />
+                <element signature="e#0#28#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/MADDPG.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="770">
+              <caret line="52" column="25" lean-forward="true" selection-start-line="52" selection-start-column="25" selection-end-line="52" selection-end-column="25" />
+              <folding>
+                <element signature="e#0#28#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ReplayBuffer.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="675">
+              <caret line="45" lean-forward="true" selection-start-line="45" selection-end-line="45" />
+              <folding>
+                <element signature="e#0#29#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/Actor.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="531">
+              <caret line="49" column="70" lean-forward="true" selection-start-line="49" selection-start-column="70" selection-end-line="49" selection-end-column="70" />
+              <folding>
+                <element signature="e#0#14#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/Critic.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="432">
+              <caret line="18" lean-forward="true" selection-start-line="18" selection-end-line="18" />
+              <folding>
+                <element signature="e#0#14#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -25,8 +79,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/gym_render_test.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
-              <caret line="17" lean-forward="true" selection-start-line="17" selection-end-line="17" />
+            <state relative-caret-position="30">
+              <caret line="6" column="45" selection-start-line="6" selection-start-column="45" selection-end-line="6" selection-end-column="45" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -34,25 +88,21 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/MADDPG.py">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gym_basic_test.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="450">
-              <caret line="30" column="64" lean-forward="true" selection-start-line="30" selection-start-column="64" selection-end-line="30" selection-end-column="64" />
-              <folding>
-                <element signature="e#0#28#0" expanded="true" />
-              </folding>
+            <state>
+              <caret column="10" selection-start-column="10" selection-end-column="10" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/suite_test.py">
+        <entry file="file://$PROJECT_DIR$/utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="360">
-              <caret line="24" column="15" lean-forward="true" selection-start-line="24" selection-start-column="15" selection-end-line="24" selection-end-column="15" />
+            <state>
               <folding>
-                <element signature="e#0#28#0" expanded="true" />
+                <element signature="e#0#10#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -77,18 +127,23 @@
         <option value="$PROJECT_DIR$/suite_test_jupyter.ipynb" />
         <option value="$PROJECT_DIR$/__init__.py" />
         <option value="$PROJECT_DIR$/utils.ipynb" />
-        <option value="$PROJECT_DIR$/suite_test.py" />
-        <option value="$PROJECT_DIR$/gym_render_test.py" />
         <option value="$PROJECT_DIR$/utils.py" />
+        <option value="$PROJECT_DIR$/suite_test.py" />
+        <option value="$PROJECT_DIR$/episode_length_test.ipynb" />
+        <option value="$PROJECT_DIR$/gym_render_test.py" />
+        <option value="$PROJECT_DIR$/gym_basic_test.py" />
+        <option value="$PROJECT_DIR$/ReplayBuffer.py" />
         <option value="$PROJECT_DIR$/MADDPG.py" />
+        <option value="$PROJECT_DIR$/Actor.py" />
+        <option value="$PROJECT_DIR$/Critic.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="2131" />
+    <option name="x" value="1985" />
     <option name="y" value="-4" />
-    <option name="width" value="1400" />
-    <option name="height" value="1028" />
+    <option name="width" value="1855" />
+    <option name="height" value="1084" />
   </component>
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="1" id="Add" />
@@ -102,12 +157,8 @@
         <subPane>
           <expand>
             <path>
-              <item name="Deep-Q-Network" type="b2602c69:ProjectViewProjectNode" />
-              <item name="Deep-Q-Network" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="Deep-Q-Network" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
+              <item name="MADDPG" type="b2602c69:ProjectViewProjectNode" />
+              <item name="MADDPG" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -117,8 +168,8 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$USER_HOME$/cd2018-2,p3.5" />
-    <property name="settings.editor.selected.configurable" value="configurable.group.appearance" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/gym_basic_test.py" />
+    <property name="settings.editor.selected.configurable" value="Images" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -132,7 +183,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.gym_render_test">
+  <component name="RunManager" selected="Python.Realtime Render">
     <configuration name="Deep-Q-Network" type="JupiterNotebook" factoryName="Jupyter Notebook" singleton="false">
       <module name="Deep-Q-Network" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -150,20 +201,21 @@
       <option name="ipnbPort" value="8888" />
       <method v="2" />
     </configuration>
-    <configuration name="gym_render_test" type="PythonConfigurationType" factoryName="Python" singleton="false" temporary="true">
+    <configuration name="Realtime Render" type="PythonConfigurationType" factoryName="Python" singleton="false" temporary="true">
       <module name="Deep-Q-Network" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
         <env name="LD_LIBRARY_PATH" value="$LD_LIBRARY_PATH:$USER_HOME$/.mujoco/mjpro150/bin::/usr/lib/nvidia-410" />
+        <env name="LD_PRELOAD" value="/usr/lib/x86_64-linux-gnu/libGLEW.so:/usr/lib/nvidia-410/libGL.so" />
       </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/gym_render_test.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/gym_basic_test.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -237,16 +289,16 @@
     </configuration>
     <list>
       <item itemvalue="Jupyter Notebook.Deep-Q-Network" />
-      <item itemvalue="Python.gym_render_test" />
+      <item itemvalue="Python.Realtime Render" />
       <item itemvalue="Python.suite_test" />
       <item itemvalue="Python.time_limit" />
       <item itemvalue="Python.utils" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.gym_render_test" />
-        <item itemvalue="Python.utils" />
+        <item itemvalue="Python.Realtime Render" />
         <item itemvalue="Python.suite_test" />
+        <item itemvalue="Python.utils" />
         <item itemvalue="Python.time_limit" />
       </list>
     </recent_temporary>
@@ -265,10 +317,10 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="1985" y="-4" width="1855" height="1084" extended-state="6" />
+    <frame x="1984" y="-11" width="1857" height="1092" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.18777293" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.13264193" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -278,7 +330,7 @@
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
-      <window_info anchor="bottom" id="Version Control" order="7" />
+      <window_info anchor="bottom" id="Version Control" order="7" weight="0.3291536" />
       <window_info anchor="bottom" id="Terminal" order="8" />
       <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
       <window_info anchor="bottom" id="Python Console" order="10" />
@@ -319,34 +371,21 @@
     <entry file="file://$PROJECT_DIR$/__init__.py">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/utils.ipynb">
-      <provider selected="true" editor-type-id="ipnb-editor">
-        <state>
-          <selected id="0" />
+    <entry file="file://$PROJECT_DIR$/utils.ipynb" />
+    <entry file="file://$PROJECT_DIR$/suite_test_jupyter.ipynb" />
+    <entry file="file://$PROJECT_DIR$/README.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
+        <state split_layout="SPLIT">
+          <first_editor />
+          <second_editor />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="315">
-          <caret line="21" column="13" lean-forward="true" selection-start-line="21" selection-start-column="13" selection-end-line="21" selection-end-column="13" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/suite_test_jupyter.ipynb">
-      <provider selected="true" editor-type-id="ipnb-editor">
-        <state>
-          <selected id="0" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/episode_length_test.ipynb" />
     <entry file="file://$PROJECT_DIR$/suite_test.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="360">
-          <caret line="24" column="15" lean-forward="true" selection-start-line="24" selection-start-column="15" selection-end-line="24" selection-end-column="15" />
+        <state relative-caret-position="135">
+          <caret line="9" selection-start-line="9" selection-end-line="9" />
           <folding>
             <element signature="e#0#28#0" expanded="true" />
           </folding>
@@ -355,20 +394,66 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/gym_render_test.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="17" lean-forward="true" selection-start-line="17" selection-end-line="17" />
+        <state relative-caret-position="30">
+          <caret line="6" column="45" selection-start-line="6" selection-start-column="45" selection-end-line="6" selection-end-column="45" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/gym_basic_test.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <caret column="10" selection-start-column="10" selection-end-column="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <folding>
+            <element signature="e#0#10#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ReplayBuffer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="675">
+          <caret line="45" lean-forward="true" selection-start-line="45" selection-end-line="45" />
+          <folding>
+            <element signature="e#0#29#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/MADDPG.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="450">
-          <caret line="30" column="64" lean-forward="true" selection-start-line="30" selection-start-column="64" selection-end-line="30" selection-end-column="64" />
+        <state relative-caret-position="770">
+          <caret line="52" column="25" lean-forward="true" selection-start-line="52" selection-start-column="25" selection-end-line="52" selection-end-column="25" />
           <folding>
             <element signature="e#0#28#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Actor.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="531">
+          <caret line="49" column="70" lean-forward="true" selection-start-line="49" selection-start-column="70" selection-end-line="49" selection-end-column="70" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Critic.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="432">
+          <caret line="18" lean-forward="true" selection-start-line="18" selection-end-line="18" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
           </folding>
         </state>
       </provider>

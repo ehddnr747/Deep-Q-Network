@@ -1,4 +1,5 @@
 from dm_control import suite
+import argparse
 import cv2
 import utils
 
@@ -47,3 +48,9 @@ class Noise:
 class replay_buffer:
 
 class DDPG:
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='provide arguments for DDPG agent')
+
+    # agent parameters
+    parser.add_argumant('--actor-lr', help)
