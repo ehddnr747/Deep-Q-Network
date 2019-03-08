@@ -4,14 +4,13 @@ import tensorflow as tf
 class Actor(object):
 
 
-    def __init__(self, sess, state_dim, action_dim,action_bound, learning_rate, tau, batch_size):
+    def __init__(self, sess, state_dim, action_dim,learning_rate, tau, batch_size):
 
         #the length of state dim might be 1 or 3(height,width,channels)
 
         self.sess = sess
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.action_bound = action_bound
         self.learning_rate = learning_rate
         self.tau = tau
         self.batch_size = batch_size
@@ -34,11 +33,10 @@ class Actor(object):
         self.action_gradient = tf.placeholder(tf.float32, [None, self.action_dim])
 
         self.actor_gradients = list(
-            map(
-                lambda x: tf.div(x, self.batch_size),
-            tf.gradients(self.out, self.network_params, -self.action_gradient)
-            )
-        )
+            map(lambda x:tf.div(x,self.batch_size),
+                tf.gradients(self.out, self.network_params, -self.action_gradient)
+                ))
+
 
         self.optimize = tf.train.AdamOptimizer(self.learning_rate).\
             apply_gradients(zip(self.actor_gradients,self.network_params))
@@ -60,6 +58,23 @@ class Actor(object):
             out = tflearn.fully_connected(net, self.action_dim, activation = 'tanh', weights_init=w_init)
 
             return inputs, out
+
+        elif len(self.state_dim) == 1:
+            inputs = tflearn.input_data(shape=[None, *self.state_dim])
+            net = tflearn.fully_connected(inputs, 400)
+            net = tflearn.layers.normalization.batch_normalization(net)
+            net = tflearn.activations.relu(net)
+            net = tflearn.fully_connected(net,300)
+            net = tflearn.layers.normalization.batch_normalization(net)
+            net = tflearn.activations.relu(net)
+
+            w_init = tflearn.initializations.uniform(minval=-0.003,maxval=0.003)
+
+            out = tflearn.fully_connected(net, self.action_dim, activation='tanh', weights_init=w_init)
+
+            return inputs, out
+
+
         else:
             assert 1 == 0, "wrong state dim input"
 
