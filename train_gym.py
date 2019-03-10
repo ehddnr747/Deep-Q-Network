@@ -127,7 +127,7 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver):
 
             if(i%100 == 0):
             #    pass
-                env.render()
+                #env.render()
                 a = actor.predict(np.reshape(s, (1, *actor.state_dim)))
                 a = 3 * a
                 #frame = env.physics.render(camera_id=0, width=320, height=240)
@@ -138,7 +138,7 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver):
             #cv2.waitKey(delay=1)
 
 
-            #env.render()
+            env.render()
 
             # a : [?, action_dim]
 
