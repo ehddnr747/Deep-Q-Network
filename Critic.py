@@ -30,6 +30,10 @@ class Critic(object):
                                                   + tf.multiply(self.target_network_params[i],1. - self.tau))
                 for i in range(len(self.target_network_params))]
 
+        self.initialize_target_network_params = \
+            [self.target_network_params[i].assign(self.network_params[i])
+             for i in range(len(self.target_network_params))]
+
         self.predicted_q_value = tf.placeholder(tf.float32, [None, 1])
 
         self.loss = tflearn.mean_square(self.out, self.predicted_q_value)
@@ -65,7 +69,7 @@ class Critic(object):
             inputs = tflearn.input_data(shape=[None, *self.state_dim])
             action = tflearn.input_data(shape=[None, self.action_dim])
             net = tflearn.fully_connected(inputs, 400)
-            net = tflearn.layers.normalization.batch_normalization(net)
+            # net = tflearn.layers.normalization.batch_normalization(net)
             net = tflearn.activations.relu(net)
 
             # Add the action tensor in the 2nd hidden layer
@@ -136,3 +140,6 @@ class Critic(object):
 
     def update_target_network(self):
         self.sess.run(self.update_target_network_params)
+
+    def initialize_target(self):
+        self.sess.run(self.initialize_target_network_params)

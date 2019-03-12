@@ -20,7 +20,6 @@ class Actor(object):
 
         self.network_params = tf.trainable_variables()
 
-
         self.target_inputs, self.target_out = self.create_actor_network()
 
         self.target_network_params = tf.trainable_variables()[len(self.network_params):]
@@ -29,6 +28,10 @@ class Actor(object):
             [self.target_network_params[i].assign(tf.multiply(self.network_params[i], self.tau)) +\
                                         tf.multiply(self.target_network_params[i],1. - self.tau) \
                 for i in range(len(self.target_network_params))]
+
+        self.initialize_target_network_params = \
+            [self.target_network_params[i].assign(self.network_params[i])
+             for i in range(len(self.target_network_params))]
 
         self.action_gradient = tf.placeholder(tf.float32, [None, self.action_dim])
 
@@ -62,10 +65,10 @@ class Actor(object):
         elif len(self.state_dim) == 1:
             inputs = tflearn.input_data(shape=[None, *self.state_dim])
             net = tflearn.fully_connected(inputs, 400)
-            net = tflearn.layers.normalization.batch_normalization(net)
+            # net = tflearn.layers.normalization.batch_normalization(net)
             net = tflearn.activations.relu(net)
             net = tflearn.fully_connected(net,300)
-            net = tflearn.layers.normalization.batch_normalization(net)
+            # net = tflearn.layers.normalization.batch_normalization(net)
             net = tflearn.activations.relu(net)
 
             w_init = tflearn.initializations.uniform(minval=-0.003,maxval=0.003)
@@ -100,3 +103,6 @@ class Actor(object):
 
     def get_num_trainable_vars(self):
         return self.num_trainable_vars
+
+    def initialize_target(self):
+        self.sess.run(self.initialize_target_network_params)
