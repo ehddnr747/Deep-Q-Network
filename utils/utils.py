@@ -60,10 +60,10 @@ def state_1d_flat(ob_dict):
 
     return np.array(result,dtype=np.float32)
 
-def directory_setting(base_dir,domain_name, task_name):
+def directory_setting(base_dir,domain_name, task_name, step_size):
     dt = datetime.datetime.now()
     dirpath = str(dt.year) + str(dt.month).zfill(2) + str(dt.day).zfill(2) +\
-    "_" + str(dt.hour).zfill(2) + str(dt.minute).zfill(2)+"_"+domain_name+"_"+task_name
+    "_" + str(dt.hour).zfill(2) + str(dt.minute).zfill(2)+"_"+domain_name+"_"+task_name+"_"+str(step_size)
     dirpath = os.path.join(base_dir,dirpath)
 
     if not os.path.isdir(dirpath):

@@ -1,4 +1,7 @@
-import tflearn
+import sys
+sys.path.append("../models")
+sys.path.append("../utils")
+
 import tensorflow as tf
 import ReplayBuffer
 import numpy as np
@@ -9,6 +12,8 @@ from dm_control import suite
 import cv2
 import utils
 import os
+import graph_reward
+
 
 
 
@@ -46,12 +51,9 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
         while time_step.last() != True:
 
             a = actor.predict(np.reshape(s, (1, *actor.state_dim)))
-            a[0] = np.clip(a[0] + actor_noise(),-1.0,1.0)
+            if (i % video_save_period != 0):
+                a[0] = np.clip(a[0] + actor_noise(),-1.0,1.0)
             # a : [?, action_dim]
-
-
-                a = actor.predict(np.reshape(s, (1, *actor.state_dim)))
-
 
             for _ in range(step_size):
                 time_step = env.step(a[0])
@@ -62,7 +64,6 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
             terminal, r, _, s2 = time_step
             s2 = utils.state_1d_flat(s2)
-            r = 0.1 * r
 
             replay_buffer.add(s,np.reshape(a, actor.action_dim),r, terminal, s2)
             # s : [4], a : [1], r: scalar, done : scalar, s2 : [4]
@@ -106,6 +107,8 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
         if i % video_save_period == 0:
             video_saver.release()
+    graph_reward.draw(os.path.basename(video_dir),1000)
+
 
 if __name__ == '__main__':
 
@@ -118,12 +121,16 @@ if __name__ == '__main__':
 
     domain_name = "cartpole"
     task_name = "swingup"
-    step_size = 10
+    step_size = 15
+    time_limit = 10*step_size
+    print("time_limit : ",time_limit)
+    print("step_size : ",step_size)
 
-    env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs={"time_limit":10*step_size})
+    env = suite.load(domain_name=domain_name, task_name=task_name, \
+                     task_kwargs={"time_limit":time_limit})
     #step outputs [termianl, reward, discount, obesrvation]
 
-    video_dir = utils.directory_setting("/home/duju/training",domain_name,task_name)
+    video_dir = utils.directory_setting("/home/duju/training",domain_name,task_name,step_size)
 
     saver = tf.train.Saver()
     state_dim = utils.state_1d_dim_calc(env)
