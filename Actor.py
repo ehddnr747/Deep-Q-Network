@@ -48,32 +48,31 @@ class Actor(object):
 
     def create_actor_network(self):
 
-        if len(self.state_dim) == 3:
-            inputs = tflearn.input_data(shape=[None,*(self.state_dim)])
-            net = tflearn.layers.conv.conv_2d(incoming=inputs, nb_filter = 16, filter_size = 7, activation='ReLU')
-            net = tflearn.layers.conv.conv_2d(incoming=net, nb_filter = 16, filter_size = 7, activation = 'ReLU')
-            net = tflearn.layers.conv.conv_2d(incoming=net, nb_filter = 16, filter_size =7, activation = 'ReLU')
-            net = tflearn.fully_connected(net, 100 ,activation='ReLU')
-            net = tflearn.fully_connected(net, 100, activation='ReLU')
+        # if len(self.state_dim) == 3:
+        #     inputs = tflearn.input_data(shape=[None,*(self.state_dim)])
+        #     net = tflearn.layers.conv.conv_2d(incoming=inputs, nb_filter = 16, filter_size = 7, activation='ReLU')
+        #     net = tflearn.layers.conv.conv_2d(incoming=net, nb_filter = 16, filter_size = 7, activation = 'ReLU')
+        #     net = tflearn.layers.conv.conv_2d(incoming=net, nb_filter = 16, filter_size =7, activation = 'ReLU')
+        #     net = tflearn.fully_connected(net, 100 ,activation='ReLU')
+        #     net = tflearn.fully_connected(net, 100, activation='ReLU')
+        #
+        #     w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
+        #
+        #     out = tflearn.fully_connected(net, self.action_dim, activation = 'tanh', weights_init=w_init)
+        #
+        #     return inputs, out
 
-            w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
-
-            out = tflearn.fully_connected(net, self.action_dim, activation = 'tanh', weights_init=w_init)
-
-            return inputs, out
-
-        elif len(self.state_dim) == 1:
+        if len(self.state_dim) == 1:
             inputs = tflearn.input_data(shape=[None, *self.state_dim])
-            net = tflearn.fully_connected(inputs, 400)
-            # net = tflearn.layers.normalization.batch_normalization(net)
+            net = tflearn.fully_connected(inputs, 400,weight_decay=0.0)
             net = tflearn.activations.relu(net)
-            net = tflearn.fully_connected(net,300)
-            # net = tflearn.layers.normalization.batch_normalization(net)
+            net = tflearn.fully_connected(net,300, weight_decay=0.0)
             net = tflearn.activations.relu(net)
 
             w_init = tflearn.initializations.uniform(minval=-0.003,maxval=0.003)
 
-            out = tflearn.fully_connected(net, self.action_dim, activation='tanh', weights_init=w_init)
+            out = tflearn.fully_connected(net, self.action_dim, activation='tanh', \
+                                          weights_init=w_init, weight_decay=0.0)
 
             return inputs, out
 

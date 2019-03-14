@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import datetime
+import os
 
 class VideoSaver:
     def __init__(self, save_path, source_fps, target_fps = 30, width = None, height = None):
@@ -57,3 +59,20 @@ def state_1d_flat(ob_dict):
         result.extend(list(k))
 
     return np.array(result,dtype=np.float32)
+
+def directory_setting(base_dir,domain_name, task_name):
+    dt = datetime.datetime.now()
+    dirpath = str(dt.year) + str(dt.month).zfill(2) + str(dt.day).zfill(2) +\
+    "_" + str(dt.hour).zfill(2) + str(dt.minute).zfill(2)+"_"+domain_name+"_"+task_name
+    dirpath = os.path.join(base_dir,dirpath)
+
+    if not os.path.isdir(dirpath):
+        os.mkdir(dirpath)
+    else:
+        pass
+
+    return dirpath
+
+def reward_writer(dirpath, num_iter, reward):
+    with open(os.path.join(dirpath,"reward.txt"),"a") as f:
+        f.write(str(num_iter)+" --- "+str(reward)+"\n")

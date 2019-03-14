@@ -46,39 +46,36 @@ class Critic(object):
 
     def create_critic_network(self):
 
-        if len(self.state_dim) == 3:
+        # if len(self.state_dim) == 3:
+        #     inputs = tflearn.input_data(shape=[None, *self.state_dim])
+        #     action = tflearn.input_data(shape=[None, self.action_dim])
+        #
+        #     net = tflearn.conv_2d(incoming=inputs, nb_filter=16, filter_size=7, activation='ReLU')
+        #     net = tflearn.conv_2d(incoming=net, nb_filter=16, filter_size=7, activation='ReLU')
+        #     net = tflearn.conv_2d(incoming=net, nb_filter=16, filter_size=7, activation='ReLU')
+        #
+        #     t1 = tflearn.fully_connected(net, 100, activation='ReLU')
+        #     t2 = tflearn.fully_connected(action, 100, activation='ReLU')
+        #
+        #     net = tflearn.layers.merge_ops.merge([t1,t2],mode="concat",axis=1)
+        #
+        #     w_init = tflearn.initializations.uniform(minval=-0.003,maxval=0.003)
+        #
+        #     out = tflearn.fully_connected(net, 1, weights_init=w_init)
+        #
+        #     return inputs, action, out
+
+        if len(self.state_dim) == 1:
             inputs = tflearn.input_data(shape=[None, *self.state_dim])
             action = tflearn.input_data(shape=[None, self.action_dim])
 
-            net = tflearn.conv_2d(incoming=inputs, nb_filter=16, filter_size=7, activation='ReLU')
-            net = tflearn.conv_2d(incoming=net, nb_filter=16, filter_size=7, activation='ReLU')
-            net = tflearn.conv_2d(incoming=net, nb_filter=16, filter_size=7, activation='ReLU')
+            input = tflearn.merge([inputs,action],mode="concat",axis=1)
 
-            t1 = tflearn.fully_connected(net, 100, activation='ReLU')
-            t2 = tflearn.fully_connected(action, 100, activation='ReLU')
-
-            net = tflearn.layers.merge_ops.merge([t1,t2],mode="concat",axis=1)
-
-            w_init = tflearn.initializations.uniform(minval=-0.003,maxval=0.003)
-
-            out = tflearn.fully_connected(net, 1, weights_init=w_init)
-
-            return inputs, action, out
-
-        elif len(self.state_dim) == 1:
-            inputs = tflearn.input_data(shape=[None, *self.state_dim])
-            action = tflearn.input_data(shape=[None, self.action_dim])
-            net = tflearn.fully_connected(inputs, 400)
-            # net = tflearn.layers.normalization.batch_normalization(net)
+            net = tflearn.fully_connected(input, 400, weight_decay= 0.0)
             net = tflearn.activations.relu(net)
 
-            # Add the action tensor in the 2nd hidden layer
-            # Use two temp layers to get the corresponding weights and biases
-            t1 = tflearn.fully_connected(net, 300)
-            t2 = tflearn.fully_connected(action, 300)
-
-            net = tflearn.activation(
-                tf.matmul(net, t1.W) + tf.matmul(action, t2.W) + t2.b, activation='relu')
+            net = tflearn.fully_connected(input, 300, weight_decay=0.0)
+            net = tflearn.activations.relu(net)
 
             # linear layer connected to 1 output representing Q(s,a)
             # Weights are init to Uniform[-3e-3, 3e-3]
@@ -86,27 +83,27 @@ class Critic(object):
             out = tflearn.fully_connected(net, 1, weights_init=w_init)
             return inputs, action, out
 
-            """
-            inputs = tflearn.input_data(shape=[None, *self.state_dim])
-            action = tflearn.input_data(shape=[None, self.action_dim])
-
-            net = tflearn.fully_connected(inputs,400)
-            #net = tflearn.layers.normalization.batch_normalization(net)
-            net = tflearn.activations.relu(net)
-
-            t1 = tflearn.fully_connected(net,300,activation='ReLU')
-            t2 = tflearn.fully_connected(action, 30, activation='sigmoid')
-            t2 = tflearn.fully_connected(t2, 30, activation='ReLu')
-            t2 = tflearn.fully_connected(t2, 30, activation='sigmoid')
-
-            net = tflearn.layers.merge_ops.merge([t1,t2],mode="concat",axis=1)
-
-            w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
-
-            out = tflearn.fully_connected(net, 1, weights_init= w_init)
-
-            return inputs, action, out
-            """
+            # """
+            # inputs = tflearn.input_data(shape=[None, *self.state_dim])
+            # action = tflearn.input_data(shape=[None, self.action_dim])
+            #
+            # net = tflearn.fully_connected(inputs,400)
+            # #net = tflearn.layers.normalization.batch_normalization(net)
+            # net = tflearn.activations.relu(net)
+            #
+            # t1 = tflearn.fully_connected(net,300,activation='ReLU')
+            # t2 = tflearn.fully_connected(action, 30, activation='sigmoid')
+            # t2 = tflearn.fully_connected(t2, 30, activation='ReLu')
+            # t2 = tflearn.fully_connected(t2, 30, activation='sigmoid')
+            #
+            # net = tflearn.layers.merge_ops.merge([t1,t2],mode="concat",axis=1)
+            #
+            # w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
+            #
+            # out = tflearn.fully_connected(net, 1, weights_init= w_init)
+            #
+            # return inputs, action, out
+            # """
 
         else:
             assert 0 == 1, "error in create_critic_network, state_dim not matches"
