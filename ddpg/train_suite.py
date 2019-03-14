@@ -121,7 +121,7 @@ if __name__ == '__main__':
 
     domain_name = "cartpole"
     task_name = "swingup"
-    step_size = 15
+    step_size = 1
     time_limit = 10*step_size
     print("time_limit : ",time_limit)
     print("step_size : ",step_size)

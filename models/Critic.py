@@ -71,16 +71,16 @@ class Critic(object):
 
             input = tflearn.merge([inputs,action],mode="concat",axis=1)
 
-            net = tflearn.fully_connected(input, 400, weight_decay= 0.0)
+            net = tflearn.fully_connected(input, 400, regularizer="L2", weight_decay= 1e-2)
             net = tflearn.activations.relu(net)
 
-            net = tflearn.fully_connected(input, 300, weight_decay=0.0)
+            net = tflearn.fully_connected(input, 300, regularizer="L2", weight_decay= 1e-2)
             net = tflearn.activations.relu(net)
 
             # linear layer connected to 1 output representing Q(s,a)
             # Weights are init to Uniform[-3e-3, 3e-3]
             w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
-            out = tflearn.fully_connected(net, 1, weights_init=w_init)
+            out = tflearn.fully_connected(net, 1, regularizer="L2", weight_decay= 1e-2, weights_init=w_init)
             return inputs, action, out
 
             # """
