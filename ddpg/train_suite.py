@@ -31,7 +31,7 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
     video_save_period =50
 
 
-    for i in range(1000):
+    for i in range(1,1000+1):
 
         #if i%1000 == 0:
         #    saver.save(sess,"/home/duju/git_repos/model.ckpt")
@@ -46,7 +46,7 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
         if i%video_save_period == 0:
             video_saver = utils.VideoSaver(os.path.join(video_dir,"training_"+str(i)+".avi")\
-                                           , int(1. / env.control_timestep()), 30, width=320, height=240)
+                                           , int(1. / env.control_timestep())*step_size, 30, width=320, height=240)
 
         while time_step.last() != True:
 
@@ -121,8 +121,13 @@ if __name__ == '__main__':
 
     domain_name = "cartpole"
     task_name = "swingup"
+
+    env_temp = suite.load(domain_name=domain_name,task_name=task_name)
+    control_timestep = env_temp.control_timestep()
+    del env_temp
+
     step_size = 1
-    time_limit = 10*step_size
+    time_limit = 1000*control_timestep*step_size
     print("time_limit : ",time_limit)
     print("step_size : ",step_size)
 

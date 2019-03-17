@@ -1,5 +1,6 @@
 import numpy as np
 
+#Gaussian Noise for action noise
 class GaussianNoise:
     def __init__(self,action_dim, sigma):
         self.action_dim = action_dim
