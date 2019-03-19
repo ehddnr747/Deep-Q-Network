@@ -28,7 +28,7 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
     replay_buffer = ReplayBuffer.ReplayBuffer(1000000)
 
-    video_save_period =50
+    video_save_period =20
 
 
     for i in range(1,1000+1):
@@ -44,6 +44,8 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
         ep_reward = 0
 
+        actor_noise.reset()
+
         if i%video_save_period == 0:
             video_saver = utils.VideoSaver(os.path.join(video_dir,"training_"+str(i)+".avi")\
                                            , int(1. / env.control_timestep())*step_size, 30, width=320, height=240)
@@ -52,8 +54,11 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
             a = actor.predict(np.reshape(s, (1, *actor.state_dim)))
             if (i % video_save_period != 0):
-                a[0] = np.clip(a[0] + actor_noise(),-1.0,1.0)
+                a_noise = actor_noise()
+                a[0] = np.clip(a[0] + a_noise,-1.0,1.0)
             # a : [?, action_dim]
+            if (i <= 10):
+                a[0] = np.clip(actor_noise(),-1.0,1.0)
 
             for _ in range(step_size):
                 time_step = env.step(a[0])
@@ -102,12 +107,14 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
                 ep_reward += r
 
             if time_step.last():
-                print(i,"---",ep_reward)
-                utils.reward_writer(video_dir,i,ep_reward)
+                max_q_from_laststep = np.max(predicted_q_value)
+                print(i,"---",ep_reward,"---",max_q_from_laststep)
+                utils.line_writer(video_dir,\
+                                 str(i)+" --- "+str(ep_reward)+" --- "+str(max_q_from_laststep)+"\n")
 
         if i % video_save_period == 0:
             video_saver.release()
-    graph_reward.draw(os.path.basename(video_dir),1000)
+            graph_reward.save_graph(os.path.basename(video_dir))
 
 
 if __name__ == '__main__':
@@ -119,8 +126,8 @@ if __name__ == '__main__':
     #tf_config.gpu_options.per_process_gpu_memory_fraction = 0.6
     tf_config.gpu_options.allow_growth = True
 
-    domain_name = "cartpole"
-    task_name = "swingup"
+    domain_name = "cheetah"
+    task_name = "run"
 
     env_temp = suite.load(domain_name=domain_name,task_name=task_name)
     control_timestep = env_temp.control_timestep()
@@ -128,8 +135,6 @@ if __name__ == '__main__':
 
     step_size = 1
     time_limit = 1000*control_timestep*step_size
-    print("time_limit : ",time_limit)
-    print("step_size : ",step_size)
 
     env = suite.load(domain_name=domain_name, task_name=task_name, \
                      task_kwargs={"time_limit":time_limit})
@@ -142,14 +147,38 @@ if __name__ == '__main__':
 
     actor_lr = 1e-3
     critic_lr = 1e-3
-    tau = 5e-3
+    tau = 1e-3
     gamma = 0.99
+    sigma = 0.1
+    critic_reg_weight = 0.0
+    noise_type = "ou"
+
+    assert noise_type in ["ou","gaussian"]
 
     with tf.Session(config=tf_config) as sess:
                         #state_dim : 1d, action_spec : scalar
         actor = Actor.Actor(sess, state_dim, env.action_spec().shape[0], actor_lr, tau, batch_size)
-        critic = Critic.Critic(sess, state_dim, env.action_spec().shape[0], critic_lr, tau, gamma, actor.get_num_trainable_vars())
+        critic = Critic.Critic(sess, state_dim, env.action_spec().shape[0], critic_lr, tau, gamma, actor.get_num_trainable_vars(),critic_reg_weight)
 
-        actor_noise = Noise.GaussianNoise(action_dim=env.action_spec().shape[0],sigma=0.1)
+        if noise_type == "gaussian":
+            actor_noise = Noise.GaussianNoise(action_dim=env.action_spec().shape[0],sigma=sigma)
+        elif noise_type == "ou":
+            actor_noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([env.action_spec().shape[0]]), sigma=sigma)
+
+        exp_detail = utils.experiment_detail_saver(
+                            domain_name, task_name, step_size,
+                            actor_lr, critic_lr, tau,
+                            gamma, sigma, batch_size,
+                            critic_reg_weight)
+
+        print(exp_detail)
+        utils.append_file_writer(video_dir, "experiment_detail.txt", "Critic origin type : "\
+                                 +critic.critic_origin_type+"\n")
+        utils.append_file_writer(video_dir, "experiment_detail.txt", "Noise type : " \
+                                 + noise_type + "\n")
+
+        utils.append_file_writer(video_dir, "experiment_detail.txt",exp_detail)
+
 
         train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video_dir,step_size)
+

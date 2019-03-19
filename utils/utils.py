@@ -69,10 +69,32 @@ def directory_setting(base_dir,domain_name, task_name, step_size):
     if not os.path.isdir(dirpath):
         os.mkdir(dirpath)
     else:
-        pass
+        raise Exception("Existing Directory")
+
+    print(dirpath)
 
     return dirpath
 
-def reward_writer(dirpath, num_iter, reward):
+def line_writer(dirpath, _str):
     with open(os.path.join(dirpath,"reward.txt"),"a") as f:
-        f.write(str(num_iter)+" --- "+str(reward)+"\n")
+        f.write(_str)
+
+def append_file_writer(dirpath, file_name, _str):
+    with open(os.path.join(dirpath,file_name),"a") as f:
+        f.write(_str)
+
+
+def experiment_detail_saver(domain_name, task_name, step_size, actor_lr, critic_lr, tau, gamma, sigma, batch_size,
+                            critic_reg_weight):
+    _str = "domain_name : " + str(domain_name) + "\n" + \
+           "task_name: " + str(task_name) + "\n" + \
+           "step_size: " + str(step_size) + "\n" + \
+           "actor_lr: " + str(actor_lr) + "\n" + \
+           "critic_lr: " + str(critic_lr) + "\n" + \
+           "tau: " + str(tau) + "\n" + \
+           "gamma: " + str(gamma) + "\n" + \
+           "sigma: " + str(sigma) + "\n" + \
+           "batct_size: " + str(batch_size) + "\n" + \
+           "critic_reg_weight: " + str(critic_reg_weight) + "\n"
+
+    return _str

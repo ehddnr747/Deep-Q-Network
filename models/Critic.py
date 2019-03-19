@@ -8,15 +8,19 @@ class Critic(object):
     Output Q(s,a)
     """
 
-    def __init__(self,sess, state_dim, action_dim, learning_rate, tau, gamma, num_actor_vars):
+    def __init__(self,sess, state_dim, action_dim, learning_rate, tau, gamma, num_actor_vars,critic_reg_weight):
         self.sess= sess
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.learning_rate = learning_rate
         self.tau = tau
         self.gamma = gamma
+        self.critic_reg_weight = critic_reg_weight
 
-        self.inputs, self.action, self.out = self.create_critic_network(network_type="origin")
+        self.critic_origin_type = "origin"
+        self.inputs, self.action, self.out = self.create_critic_network(network_type=self.critic_origin_type,\
+                                                                        l2_weight=self.critic_reg_weight)
+        print("Critic origin type :",self.critic_origin_type)
 
         self.network_params = tf.trainable_variables()[num_actor_vars:]
 
@@ -39,12 +43,12 @@ class Critic(object):
         self.loss = tflearn.mean_square(self.out, self.predicted_q_value)
 
         self.optimize = tf.train.AdamOptimizer(
-            self.learning_rate).minimize(self.loss+tf.losses.get_regularization_losses())
+            self.learning_rate).minimize(self.loss+tf.reduce_sum(tf.losses.get_regularization_losses()))
 
         self.action_grads = tf.gradients(self.out, self.action)
 
 
-    def create_critic_network(self,network_type="origin"):
+    def create_critic_network(self,network_type="origin", l2_weight = 0.0):
         assert network_type in ["origin","target"]
 
         # if len(self.state_dim) == 3:
@@ -73,14 +77,14 @@ class Critic(object):
             input = tflearn.merge([inputs,action],mode="concat",axis=1)
 
             if(network_type == "origin"):
-                net = tflearn.fully_connected(input, 400, regularizer="L2", weight_decay= 1e-2)
+                net = tflearn.fully_connected(input, 400, regularizer="L2", weight_decay= l2_weight)
             else:
                 net = tflearn.fully_connected(input, 400, weight_decay=0.0)
 
             net = tflearn.activations.relu(net)
 
             if (network_type == "origin"):
-                net = tflearn.fully_connected(input, 300, regularizer="L2", weight_decay= 1e-2)
+                net = tflearn.fully_connected(input, 300, regularizer="L2", weight_decay= l2_weight)
             else:
                 net = tflearn.fully_connected(input, 300, weight_decay=0.0)
             net = tflearn.activations.relu(net)
@@ -90,7 +94,7 @@ class Critic(object):
             w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
 
             if (network_type == "origin"):
-                out = tflearn.fully_connected(net, 1, regularizer="L2", weight_decay= 1e-2, weights_init=w_init)
+                out = tflearn.fully_connected(net, 1, regularizer="L2", weight_decay= l2_weight, weights_init=w_init)
             else:
                 out = tflearn.fully_connected(net, 1, weight_decay=0.0, weights_init=w_init)
 
