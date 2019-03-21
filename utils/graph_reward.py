@@ -17,13 +17,13 @@ def save_graph(exp_code, reward_scale=1000, q_scale=110):
     image_path = os.path.join(target_dir,"rewards.png")
 
     with open(txt_path) as csvfile:
-        csvreader = csv.reader(csvfile, delimiter='-')
+        csvreader = csv.reader(csvfile, delimiter='*')
         rewards = []
         for row in csvreader:
             rewards.append(float(row[3]))
 
     with open(txt_path) as csvfile:
-        csvreader = csv.reader(csvfile, delimiter='-')
+        csvreader = csv.reader(csvfile, delimiter='*')
         max_q_values = []
         try:
             for row in csvreader:
@@ -59,7 +59,7 @@ def draw(rewards, reward_scale = 1000, max_q_values = None, q_scale = 110):
         ax2.set_ylabel('max_q',color=color)
         ax2.plot(t,max_q_values,color=color)
         ax2.tick_params(axis='y',labelcolor=color)
-        ax2.set_ylim([0,q_scale])
+        ax2.set_ylim([0,np.int(np.max([q_scale,np.max(max_q_values)]))])
 
     fig.tight_layout()
 
