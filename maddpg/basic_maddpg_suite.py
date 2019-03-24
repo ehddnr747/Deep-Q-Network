@@ -141,7 +141,7 @@ if __name__ == '__main__':
     tf_config.gpu_options.allow_growth = True
 
     domain_name = "cartpole"
-    task_name = "swingup"
+    task_name = "swingup_sparse"
 
     env_temp = suite.load(domain_name=domain_name,task_name=task_name)
     control_timestep = env_temp.control_timestep()
@@ -161,21 +161,27 @@ if __name__ == '__main__':
 
     num_of_action = 2
 
-    actor_lr = 1e-3
-    critic_lr = 1e-3
+    actor_lr = 1e-5
+    critic_lr = 1e-5
     tau = 1e-3
     gamma = 0.99
-    sigma = 0.3
+    sigma = 0.2
     critic_reg_weight = 0.0
     noise_type = "ou"
-
     action_dim = env.action_spec().shape[0]*num_of_action
+    actor_type = "rnn"
 
     assert noise_type in ["ou","gaussian"]
+    assert actor_type in ["rnn","basic"]
 
     with tf.Session(config=tf_config) as sess:
                         #state_dim : 1d, action_spec : scalar
-        actor = RNNActor.Actor(sess, state_dim, action_dim, actor_lr, tau, batch_size,num_of_action)
+
+        if actor_type == "basic":
+            actor = Actor.Actor(sess, state_dim, action_dim, actor_lr, tau, batch_size)
+        elif actor_type == "rnn":
+            actor = RNNActor.Actor(sess, state_dim, action_dim, actor_lr, tau, batch_size, num_of_action)
+
         critic = Critic.Critic(sess, state_dim, action_dim, critic_lr, tau, gamma, actor.get_num_trainable_vars(),critic_reg_weight)
 
         if noise_type == "gaussian":
@@ -193,6 +199,10 @@ if __name__ == '__main__':
         utils.append_file_writer(video_dir, "experiment_detail.txt", "num of action : " \
                         + str(num_of_action) + "\n")
         print("num of action : " + str(num_of_action))
+
+        utils.append_file_writer(video_dir, "experiment_detail.txt", "actor type : " \
+                         + actor_type + "\n")
+        print("actor type : " + actor_type +"\n")
 
         utils.append_file_writer(video_dir, "experiment_detail.txt", "Critic origin type : "\
                                  +critic.critic_origin_type+"\n")

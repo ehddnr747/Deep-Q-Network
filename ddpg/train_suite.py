@@ -14,7 +14,7 @@ import utils
 import os
 import graph_reward
 
-
+print("No action clip")
 
 
 def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video_dir,step_size):
@@ -28,10 +28,11 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
     replay_buffer = ReplayBuffer.ReplayBuffer(1000000)
 
-    video_save_period =50
+    video_save_period =100
 
 
-    for i in range(1,3000+1):
+
+    for i in range(1,1000+1):
 
         #if i%1000 == 0:
         #    saver.save(sess,"/home/duju/git_repos/model.ckpt")
@@ -53,12 +54,11 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
         while time_step.last() != True:
 
             a = actor.predict(np.reshape(s, (1, *actor.state_dim)))
+            #print(a)
             if (i % video_save_period != 0):
                 a_noise = actor_noise()
-                a[0] = np.clip(a[0] + a_noise,-1.0,1.0)
+                a[0] = a[0] + a_noise
             # a : [?, action_dim]
-            if (i <= 10):
-                a[0] = np.clip(actor_noise(),-1.0,1.0)
 
             for _ in range(step_size):
                 time_step = env.step(a[0])
@@ -69,6 +69,14 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
             terminal, r, _, s2 = time_step
             s2 = utils.state_1d_flat(s2)
+            #print(a)
+            #print(a_noise)
+            #print(r)
+
+            #print(sess.run(actor.network_params[-2]))
+
+            #print("----------")
+
 
             replay_buffer.add(s,np.reshape(a, actor.action_dim),r, terminal, s2)
             # s : [4], a : [1], r: scalar, done : scalar, s2 : [4]
@@ -90,6 +98,23 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
 
                 # y_i : [batch_size, 1]
 
+                #print(r_batch)
+
+                #print(y_i)
+                #sys.exit()
+
+                #print(critic.network_params[0])
+                #print(np.sum(np.square(sess.run(critic.network_params[0]))))
+
+
+                #print("*")
+                #print(tf.losses.get_regularization_losses()[0])
+                #print(tf.losses.get_regularization_losses()[0].shape)
+                #print("***")
+                #print(sess.run(tf.losses.get_regularization_losses()[0]))
+                #print("***")
+                #sys.exit()
+
                 predicted_q_value, _ = critic.train(
                     s_batch, a_batch, np.reshape(y_i,(batch_size,1))
                 )
@@ -97,10 +122,27 @@ def train_feature(sess, env, actor, critic, actor_noise, batch_size,saver, video
                 a_outs = actor.predict(s_batch)
                 grads = critic.action_gradients(s_batch,a_outs)
 
+                #print(grads)
+                #sys.exit()
+
                 actor.train(s_batch, grads[0]) #grads is returned as list of length 1
+
+                # print(sess.run(actor.network_params[0])[0][0])
+                # print(sess.run(actor.target_network_params[0])[0][0])
+                #
+                # print(sess.run(critic.network_params[0])[0][0])
+                # print(sess.run(critic.target_network_params[0])[0][0])
 
                 actor.update_target_network() # Do we do this every time?
                 critic.update_target_network()
+
+                # print(sess.run(actor.network_params[0])[0][0])
+                # print(sess.run(actor.target_network_params[0])[0][0])
+                #
+                # print(sess.run(critic.network_params[0])[0][0])
+                # print(sess.run(critic.target_network_params[0])[0][0])
+                #
+                # sys.exit()
 
                 s = s2
 
@@ -126,8 +168,8 @@ if __name__ == '__main__':
     #tf_config.gpu_options.per_process_gpu_memory_fraction = 0.6
     tf_config.gpu_options.allow_growth = True
 
-    domain_name = "cartpole"
-    task_name = "swingup"
+    domain_name = "cheetah"
+    task_name = "run"
 
     env_temp = suite.load(domain_name=domain_name,task_name=task_name)
     control_timestep = env_temp.control_timestep()
@@ -147,10 +189,10 @@ if __name__ == '__main__':
 
     actor_lr = 1e-3
     critic_lr = 1e-3
-    tau = 1e-3
+    tau = 5e-3
     gamma = 0.99
-    sigma = 0.4
-    critic_reg_weight = 1e-2
+    sigma = 0.2
+    critic_reg_weight = 0.0
     noise_type = "ou"
 
     assert noise_type in ["ou","gaussian"]

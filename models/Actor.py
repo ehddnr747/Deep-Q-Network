@@ -25,8 +25,10 @@ class Actor(object):
         self.target_network_params = tf.trainable_variables()[len(self.network_params):]
 
         self.update_target_network_params = \
-            [self.target_network_params[i].assign(tf.multiply(self.network_params[i], self.tau)) +\
-                                        tf.multiply(self.target_network_params[i],1. - self.tau) \
+            [self.target_network_params[i].assign(
+                                        tf.multiply(self.network_params[i], self.tau) +\
+                                        tf.multiply(self.target_network_params[i],1. - self.tau)
+                                        ) \
                 for i in range(len(self.target_network_params))]
 
         self.initialize_target_network_params = \
@@ -64,8 +66,11 @@ class Actor(object):
 
         if len(self.state_dim) == 1:
             inputs = tflearn.input_data(shape=[None, *self.state_dim])
+
+            init_1 = tflearn.initializations.uniform()
             net = tflearn.fully_connected(inputs, 400,weight_decay=0.0)
             net = tflearn.activations.relu(net)
+
             net = tflearn.fully_connected(net,300, weight_decay=0.0)
             net = tflearn.activations.relu(net)
 
