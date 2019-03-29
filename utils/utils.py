@@ -67,7 +67,7 @@ def directory_setting(base_dir,domain_name, task_name, step_size):
     dirpath = os.path.join(base_dir,dirpath)
 
     if not os.path.isdir(dirpath):
-        os.mkdir(dirpath)
+        os.makedirs(dirpath)
     else:
         raise Exception("Existing Directory")
 
@@ -80,6 +80,7 @@ def line_writer(dirpath, _str):
         f.write(_str)
 
 def append_file_writer(dirpath, file_name, _str):
+    print(_str, end="")
     with open(os.path.join(dirpath,file_name),"a") as f:
         f.write(_str)
 

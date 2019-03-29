@@ -6,14 +6,13 @@ import numpy as np
 
 training_dir = "/home/duju/training"
 
-def save_graph(exp_code, reward_scale=1000, q_scale=110):
-    assert exp_code is not None
+def save_graph(record_dir, reward_scale):
 
-    target_dir = os.path.join(training_dir,exp_code)
+    target_dir = record_dir
 
     assert os.path.isdir(target_dir)
 
-    txt_path = os.path.join(target_dir,"reward.txt")
+    txt_path = os.path.join(target_dir,"rewards.txt")
     image_path = os.path.join(target_dir,"rewards.png")
 
     with open(txt_path) as csvfile:
@@ -25,22 +24,21 @@ def save_graph(exp_code, reward_scale=1000, q_scale=110):
     with open(txt_path) as csvfile:
         csvreader = csv.reader(csvfile, delimiter='*')
         max_q_values = []
-        try:
-            for row in csvreader:
-                max_q_values.append(float(row[6]))
+        for row in csvreader:
+            max_q_values.append(float(row[6]))
 
-        except Exception :
-            print("no q values")
+    with open(txt_path) as csvfile:
+        csvreader = csv.reader(csvfile, delimiter='*')
+        eval_rewards = []
+        for row in csvreader:
+            eval_rewards.append(float(row[9]))
 
-    if len(max_q_values)== 0:
-        max_q_values = None
-
-    draw(rewards, reward_scale, max_q_values, q_scale)
+    draw(rewards, max_q_values, eval_rewards, reward_scale)
 
     plt.savefig(image_path,dpi=300)
     plt.close()
 
-def draw(rewards, reward_scale = 1000, max_q_values = None, q_scale = 110):
+def draw(rewards, max_q_values, eval_rewards, reward_scale):
     t = np.arange(1,len(rewards)+1)
 
     fig, ax1 = plt.subplots()
@@ -52,14 +50,16 @@ def draw(rewards, reward_scale = 1000, max_q_values = None, q_scale = 110):
     ax1.tick_params(axis='y',labelcolor=color)
     ax1.set_ylim([0,reward_scale])
 
-    if max_q_values is not None:
-        ax2 = ax1.twinx()
+    color = 'tab:orange'
+    ax1.plot(t,eval_rewards, color=color)
 
-        color = 'tab:red'
-        ax2.set_ylabel('max_q',color=color)
-        ax2.plot(t,max_q_values,color=color)
-        ax2.tick_params(axis='y',labelcolor=color)
-        ax2.set_ylim([0,np.int(np.max([q_scale,np.max(max_q_values)]))])
+    ax2 = ax1.twinx()
+
+    color = 'tab:red'
+    ax2.set_ylabel('max_q',color=color)
+    ax2.plot(t,max_q_values,color=color)
+    ax2.tick_params(axis='y',labelcolor=color)
+    ax2.set_ylim([0,np.max([np.max(max_q_values),1.0])])
 
     fig.tight_layout()
 

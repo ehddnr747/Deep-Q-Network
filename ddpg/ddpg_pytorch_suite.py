@@ -1,4 +1,5 @@
 import sys
+import os
 sys.path.append("../utils")
 sys.path.append("../models")
 
@@ -12,16 +13,43 @@ import numpy as np
 import utils
 import ReplayBuffer
 import Noise
+import graph_reward
 
-critic_lr = 1e-3
-actor_lr = 1e-3
-tau = 5e-3
+framework = "PyTorch"
+exp_type = "Baseline"
+actor_lr = 1e-4
+critic_lr = 1e-4
+tau = 1e-3
 batch_size = 100
 buffer_size = 1e6
-sigma = 0.2
+sigma = 0.4
 gamma = 0.99
 device = torch.device("cuda")
+domain_name = "cartpole"
+task_name = "swingup"
+action_gradation = 30
+noise_type = "ou"
 
+control_stepsize = 1
+
+video_save_period = 20
+
+record_dir = utils.directory_setting("/home/duju/training/pytorch",domain_name,task_name,control_stepsize)
+
+utils.append_file_writer(record_dir, "exp_detail.txt", "exp_type : "+str(exp_type)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "framework : "+str(framework)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "actor_lr : "+str(actor_lr)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "critic_lr : "+str(critic_lr)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "tau : "+str(tau)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "batch_size : "+str(batch_size)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "buffer_size : "+str(buffer_size)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "sigma : "+str(sigma)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "gamma : "+str(gamma)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "domain_name : "+str(domain_name)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "task_name : "+str(task_name)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "control_stepsize : "+str(control_stepsize)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "action_gradation : "+str(action_gradation)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "noise_type : "+str(noise_type)+"\n")
 
 class DDPGActor(nn.Module):
     def __init__(self, state_dim, action_dim, actor_lr, device):
@@ -93,9 +121,88 @@ def target_initialize(main, target):
     for pi in range(len(params_main)):
         params_target[pi].data.copy_(params_main[pi].data)
 
+def train(actor_main, critic_main, actor_target, critic_target, replay_buffer, criterion):
+
+    s_batch, a_batch, r_batch, t_batch, s2_batch = replay_buffer.sample_batch(batch_size)
+    s_batch = torch.FloatTensor(s_batch).to(device)
+    a_batch = torch.FloatTensor(a_batch).to(device)
+    r_batch = torch.FloatTensor(r_batch).to(device)
+    s2_batch = torch.FloatTensor(s2_batch).to(device)
+
+    with torch.no_grad():
+        next_target_q = critic_target.forward(s2_batch,
+                                              actor_target.forward(s2_batch)
+                                              )
+        y_i = r_batch.view([-1, 1]) + gamma * next_target_q
+
+    q = critic_main.forward(s_batch, a_batch.view([-1, action_dim]))
+
+    loss = criterion(q, y_i)
+
+    critic_main.optimizer.zero_grad()
+    loss.backward()
+    critic_main.optimizer.step()
+
+    # max_q print
+
+    actor_main.optimizer.zero_grad()
+    a_out = actor_main.forward(s_batch)
+    loss = -critic_main.forward(s_batch, a_out).mean()
+    loss.backward()
+    actor_main.optimizer.step()
+
+    soft_target_update(actor_main, actor_target, tau)
+    soft_target_update(critic_main, critic_target, tau)
+
+    return np.max(q.detach().cpu().numpy())
+
+def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info = None):
+
+    timestep = env.reset()
+    _, _, _, s = timestep
+    s = torch.FloatTensor(utils.state_1d_flat(s)).to(device)
+
+    step_i = 0
+    ep_reward = 0
+
+    if video_info is not None:
+        video_dir = video_info[0]
+        epi_i = video_info[1]
+
+        video_filepath = os.path.join(video_dir,"training_"+str(epi_i)+".avi")
+        video_saver = utils.VideoSaver(video_filepath, int(1./env.control_timestep()),30, width=320, height=240)
+
+        frame = env.physics.render(camera_id=0, width=320,height=240)
+        video_saver.write(utils.RGB2BGR(frame))
+
+    while step_i < 1000:
+        with torch.no_grad():
+            a = actor_main.forward(s.view(-1,state_dim)).cpu().numpy()[0]
+
+        for _ in range(control_stepsize):
+            timestep = env.step(np.reshape(a,(action_dim,)))
+            step_i += 1
+
+            if video_info is not None:
+                frame = env.physics.render(camera_id=0, width=320, height=240)
+                video_saver.write(utils.RGB2BGR(frame))
+
+            if step_i > 1000:
+                break
+        if step_i > 1000:
+            break
+
+        t, r, _, s2 = timestep
+        s2 = torch.FloatTensor(utils.state_1d_flat(s2)).to(device)
+
+        s = s2
+        ep_reward += r
+
+    return ep_reward
+
 if __name__ == "__main__":
 
-    env = suite.load(domain_name="cheetah", task_name="run")
+    env = suite.load(domain_name=domain_name, task_name=task_name)
 
     state_dim = utils.state_1d_dim_calc(env)[-1]
 
@@ -103,7 +210,12 @@ if __name__ == "__main__":
 
     replay_buffer = ReplayBuffer.ReplayBuffer(buffer_size=buffer_size)
 
-    ou_noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([action_dim]), sigma=sigma * np.ones([action_dim]))
+    if noise_type == "ou":
+        noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([action_dim]), sigma=sigma * np.ones([action_dim]))
+    elif noise_type == "gaussian":
+        noise = Noise.GaussianNoise(action_dim = action_dim, sigma = sigma)
+    else:
+        raise
 
     MSEcriterion = nn.MSELoss()
 
@@ -116,59 +228,55 @@ if __name__ == "__main__":
 
     for epi_i in range(1, 1000 + 1):
 
-        ou_noise.reset()
+        noise.reset()
         timestep = env.reset()
         ep_reward = 0.0
 
         # timestep, reward, discount, observation
         _, _, _, s = timestep
+
         s = torch.FloatTensor(utils.state_1d_flat(s)).to(device)
-        while timestep.last() != True:
+
+        step_i = 0
+        while step_i < 1000:
+
             with torch.no_grad():
                 a = actor_main.forward(s.view(-1,state_dim)).cpu().numpy()
-                a = a + ou_noise()
-                a = a[0]
+                if epi_i < action_gradation+1:
+                    a = a * float(epi_i) / float(action_gradation) + noise()
+                else:
+                    a = a + noise()
+                a = np.clip(a[0],-1.0, 1.0)
 
-            timestep = env.step(a)
+            for _ in range(control_stepsize):
+                timestep = env.step(a)
+                step_i += 1
+                if step_i > 1000:
+                    break
+            if step_i > 1000:
+                break
+
             t, r, _, s2 = timestep
-
             s2 = torch.FloatTensor(utils.state_1d_flat(s2)).to(device)
-
             replay_buffer.add(s.cpu().numpy(), a, r, t, s2.cpu().numpy())
-
-            s_batch, a_batch, r_batch, t_batch, s2_batch = replay_buffer.sample_batch(batch_size)
-            s_batch = torch.FloatTensor(s_batch).to(device)
-            a_batch = torch.FloatTensor(a_batch).to(device)
-            r_batch = torch.FloatTensor(r_batch).to(device)
-            s2_batch = torch.FloatTensor(s2_batch).to(device)
-
-            with torch.no_grad():
-                next_target_q = critic_target.forward(s2_batch,
-                                                      actor_target.forward(s2_batch)
-                                                      )
-                y_i = r_batch.view([-1, 1]) + gamma * next_target_q
-
-            q = critic_main.forward(s_batch, a_batch.view([-1, action_dim]))
-
-            loss = MSEcriterion(q, y_i)
-
-            critic_main.optimizer.zero_grad()
-            loss.backward()
-            critic_main.optimizer.step()
-
-            # max_q print
-
-            actor_main.optimizer.zero_grad()
-            a_out = actor_main.forward(s_batch)
-            loss = -critic_main.forward(s_batch, a_out).mean()
-            loss.backward()
-            actor_main.optimizer.step()
-
-            soft_target_update(actor_main, actor_target, tau)
-            soft_target_update(critic_main, critic_target, tau)
 
             s = s2
             ep_reward += r
 
-        max_q_from_laststep = np.max(q.detach().cpu().numpy())
-        print(epi_i,"***",ep_reward,"***",max_q_from_laststep)
+        for _ in range(int(1000/control_stepsize)):
+            max_q = train(actor_main, critic_main, actor_target, critic_target, replay_buffer, MSEcriterion)
+
+        max_q_from_laststep = max_q
+
+        if epi_i % video_save_period == 1:
+            eval_return = evaluate(actor_main, env, control_stepsize, state_dim, action_dim,\
+                                   video_info=[record_dir,epi_i])
+        else:
+            eval_return = evaluate(actor_main, env, control_stepsize, state_dim, action_dim)
+
+        rewards_str = str(epi_i) + " *** " + str(ep_reward) + " *** " \
+                      + str(max_q_from_laststep) + " *** " + str(eval_return)+"\n"
+        utils.append_file_writer(record_dir, "rewards.txt", rewards_str)
+
+        if epi_i % video_save_period == 1:
+            graph_reward.save_graph(record_dir, 1000/control_stepsize)
