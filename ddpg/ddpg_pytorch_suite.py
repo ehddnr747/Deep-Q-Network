@@ -1,10 +1,11 @@
 import sys
 import os
 
-from ..utils import graph_reward
-from ..utils import utils
-from ..models import ReplayBuffer
-from ..models import Noise
+#Project directory must be included in python path
+import utils.utils as utils
+import utils.graph_reward as graph_reward
+import models.ReplayBuffer as ReplayBuffer
+import models.Noise as Noise
 
 import torch
 import torch.nn as nn
@@ -21,17 +22,18 @@ critic_lr = 1e-4
 tau = 1e-3
 batch_size = 100
 buffer_size = 1e6
+sigma_min = 0.1
 sigma_max = 0.5
 gamma = 0.99
 device = torch.device("cuda")
-domain_name = "hopper"
-task_name = "stand"
+domain_name = "cheetah"
+task_name = "run"
 action_gradation = 30
 noise_type = "ou"
 
-control_stepsize = 1
+control_stepsize = 10
 
-video_save_period = 20
+video_save_period = 50
 
 record_dir = utils.directory_setting("/home/duju/training/pytorch",domain_name,task_name,control_stepsize)
 
@@ -42,6 +44,7 @@ utils.append_file_writer(record_dir, "exp_detail.txt", "critic_lr : "+str(critic
 utils.append_file_writer(record_dir, "exp_detail.txt", "tau : "+str(tau)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "batch_size : "+str(batch_size)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "buffer_size : "+str(buffer_size)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "sigma_min : "+str(sigma_min)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "sigma_max : "+str(sigma_max)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "gamma : "+str(gamma)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "domain_name : "+str(domain_name)+"\n")
@@ -49,6 +52,7 @@ utils.append_file_writer(record_dir, "exp_detail.txt", "task_name : "+str(task_n
 utils.append_file_writer(record_dir, "exp_detail.txt", "control_stepsize : "+str(control_stepsize)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "action_gradation : "+str(action_gradation)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "noise_type : "+str(noise_type)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "parameterized sigma\n")
 
 class DDPGActor(nn.Module):
     def __init__(self, state_dim, action_dim, actor_lr, device):
@@ -140,6 +144,7 @@ def train(actor_main, critic_main, actor_target, critic_target, replay_buffer, c
 
     critic_main.optimizer.zero_grad()
     loss.backward()
+    torch.nn.utils.clip_grad_value_(critic_main.parameters(), 1.0)
     critic_main.optimizer.step()
 
     # max_q print
@@ -147,7 +152,9 @@ def train(actor_main, critic_main, actor_target, critic_target, replay_buffer, c
     actor_main.optimizer.zero_grad()
     a_out = actor_main.forward(s_batch)
     loss = -critic_main.forward(s_batch, a_out).mean()
+
     loss.backward()
+    torch.nn.utils.clip_grad_value_(actor_main.parameters(), 1.0)
     actor_main.optimizer.step()
 
     soft_target_update(actor_main, actor_target, tau)
@@ -169,7 +176,7 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
         epi_i = video_info[1]
 
         video_filepath = os.path.join(video_dir,"training_"+str(epi_i)+".avi")
-        video_saver = utils.VideoSaver(video_filepath, 1.0/env.control_timestep(), 30, width=320, height=240)
+        video_saver = utils.VideoSaver(video_filepath, int(1.0/env.control_timestep()), 30, width=320, height=240)
 
         frame = env.physics.render(camera_id=0, width=320,height=240)
         video_saver.write(utils.RGB2BGR(frame))
@@ -197,6 +204,9 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
         s = s2
         ep_reward += r
 
+    if video_info is not None:
+        video_saver.release()
+
     return ep_reward
 
 if __name__ == "__main__":
@@ -223,7 +233,7 @@ if __name__ == "__main__":
 
     for epi_i in range(1, 2000 + 1):
 
-        sigma = np.random.uniform(0.0, sigma_max)
+        sigma = np.random.uniform(sigma_min, sigma_max)
 
         assert noise_type in ["ou","gaussian"]
         if noise_type == "ou":
@@ -240,6 +250,13 @@ if __name__ == "__main__":
 
         s = torch.FloatTensor(utils.state_1d_flat(s)).to(device)
 
+        if epi_i % video_save_period == 1:
+            video_filepath = os.path.join(record_dir, "training_noise_" + str(epi_i) + ".avi")
+            video_saver = utils.VideoSaver(video_filepath, int(1.0 / env.control_timestep()), 30, width=320, height=240)
+
+            frame = env.physics.render(camera_id=0, width=320, height=240)
+            video_saver.write(utils.RGB2BGR(frame))
+
         step_i = 0
         while step_i < 1000:
 
@@ -254,6 +271,12 @@ if __name__ == "__main__":
             for _ in range(control_stepsize):
                 timestep = env.step(a)
                 step_i += 1
+
+                if epi_i % video_save_period == 1:
+                    frame = env.physics.render(camera_id=0, width=320, height=240)
+                    video_saver.write(utils.RGB2BGR(frame))
+
+
                 if step_i > 1000:
                     break
             if step_i > 1000:
@@ -272,6 +295,7 @@ if __name__ == "__main__":
         max_q_from_laststep = max_q
 
         if epi_i % video_save_period == 1:
+            video_saver.release()
             eval_return = evaluate(actor_main, env, control_stepsize, state_dim, action_dim,\
                                    video_info=[record_dir,epi_i])
         else:
