@@ -1,7 +1,10 @@
 import sys
 import os
-sys.path.append("../utils")
-sys.path.append("../models")
+
+from ..utils import graph_reward
+from ..utils import utils
+from ..models import ReplayBuffer
+from ..models import Noise
 
 import torch
 import torch.nn as nn
@@ -10,10 +13,6 @@ import torch.optim as optim
 
 from dm_control import suite
 import numpy as np
-import utils
-import ReplayBuffer
-import Noise
-import graph_reward
 
 framework = "PyTorch"
 exp_type = "Baseline"
@@ -22,11 +21,11 @@ critic_lr = 1e-4
 tau = 1e-3
 batch_size = 100
 buffer_size = 1e6
-sigma = 0.4
+sigma_max = 0.5
 gamma = 0.99
 device = torch.device("cuda")
-domain_name = "cartpole"
-task_name = "swingup"
+domain_name = "hopper"
+task_name = "stand"
 action_gradation = 30
 noise_type = "ou"
 
@@ -43,7 +42,7 @@ utils.append_file_writer(record_dir, "exp_detail.txt", "critic_lr : "+str(critic
 utils.append_file_writer(record_dir, "exp_detail.txt", "tau : "+str(tau)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "batch_size : "+str(batch_size)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "buffer_size : "+str(buffer_size)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "sigma : "+str(sigma)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "sigma_max : "+str(sigma_max)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "gamma : "+str(gamma)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "domain_name : "+str(domain_name)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "task_name : "+str(task_name)+"\n")
@@ -170,7 +169,7 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
         epi_i = video_info[1]
 
         video_filepath = os.path.join(video_dir,"training_"+str(epi_i)+".avi")
-        video_saver = utils.VideoSaver(video_filepath, int(1./env.control_timestep()),30, width=320, height=240)
+        video_saver = utils.VideoSaver(video_filepath, 1.0/env.control_timestep(), 30, width=320, height=240)
 
         frame = env.physics.render(camera_id=0, width=320,height=240)
         video_saver.write(utils.RGB2BGR(frame))
@@ -208,14 +207,10 @@ if __name__ == "__main__":
 
     action_dim = env.action_spec().shape[-1]
 
-    replay_buffer = ReplayBuffer.ReplayBuffer(buffer_size=buffer_size)
+    utils.append_file_writer(record_dir, "exp_detail.txt", "state_dim : " + str(state_dim) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "action_dim : " + str(action_dim) + "\n")
 
-    if noise_type == "ou":
-        noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([action_dim]), sigma=sigma * np.ones([action_dim]))
-    elif noise_type == "gaussian":
-        noise = Noise.GaussianNoise(action_dim = action_dim, sigma = sigma)
-    else:
-        raise
+    replay_buffer = ReplayBuffer.ReplayBuffer(buffer_size=buffer_size)
 
     MSEcriterion = nn.MSELoss()
 
@@ -226,7 +221,15 @@ if __name__ == "__main__":
 
     target_initialize(actor_main, actor_target)
 
-    for epi_i in range(1, 1000 + 1):
+    for epi_i in range(1, 2000 + 1):
+
+        sigma = np.random.uniform(0.0, sigma_max)
+
+        assert noise_type in ["ou","gaussian"]
+        if noise_type == "ou":
+            noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([action_dim]), sigma=sigma * np.ones([action_dim]))
+        else:
+            noise = Noise.GaussianNoise(action_dim=action_dim, sigma=sigma)
 
         noise.reset()
         timestep = env.reset()
