@@ -26,15 +26,15 @@ sigma_min = 0.1
 sigma_max = 0.5
 gamma = 0.99
 device = torch.device("cuda")
-domain_name = "cheetah"
-task_name = "run"
+domain_name = "cartpole"
+task_name = "swingup"
 action_gradation = 30
 noise_type = "ou"
-max_episode = 2500
 
-control_stepsize = 1
+control_stepsize = 20
+max_episode = 1000 + int(control_stepsize / 10) * 1000
 
-video_save_period = 50
+video_save_period = 100
 
 record_dir = utils.directory_setting("/home/duju/training/pytorch",domain_name,task_name,control_stepsize)
 

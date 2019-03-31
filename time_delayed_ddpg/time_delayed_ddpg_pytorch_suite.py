@@ -32,11 +32,11 @@ domain_name = "cartpole"
 task_name = "swingup"
 action_gradation = 30
 noise_type = "ou"
-max_episode = 1000
 
-control_stepsize = 10
+control_stepsize = 20
+max_episode = 1000 + int(control_stepsize / 10) * 1000
 
-video_save_period = 10
+video_save_period = 100
 
 record_dir = utils.directory_setting("/home/duju/training/pytorch",domain_name,task_name,control_stepsize)
 
@@ -170,7 +170,11 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
 
     timestep = env.reset()
     _, _, _, s = timestep
-    s = torch.FloatTensor(utils.state_1d_flat(s)).to(device)
+    prev_action = np.zeros([action_dim])
+
+    s = utils.state_1d_flat(s)
+    s_a = np.append(s, prev_action)
+    s_a = torch.FloatTensor(s_a).to(device)
 
     step_i = 0
     ep_reward = 0
@@ -187,10 +191,10 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
 
     while step_i < 1000:
         with torch.no_grad():
-            a = actor_main.forward(s.view(-1,state_dim)).cpu().numpy()[0]
+            a = actor_main.forward(s_a.view(-1,state_dim)).cpu().numpy()[0]
 
         for _ in range(control_stepsize):
-            timestep = env.step(np.reshape(a,(action_dim,)))
+            timestep = env.step(np.reshape(prev_action,(action_dim,)))
             step_i += 1
 
             if video_info is not None:
@@ -203,10 +207,13 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
             break
 
         t, r, _, s2 = timestep
-        s2 = torch.FloatTensor(utils.state_1d_flat(s2)).to(device)
+        s2 = utils.state_1d_flat(s2)
+        s2_a = np.append(s2, a)
+        s2_a = torch.FloatTensor(s2_a).to(device)
 
-        s = s2
+        s_a = s2_a
         ep_reward += r
+        prev_action = a
 
     if video_info is not None:
         video_saver.release()
@@ -253,9 +260,10 @@ if __name__ == "__main__":
 
         # timestep, reward, discount, observation
         _, _, _, s = timestep
+        s = utils.state_1d_flat(s)
 
         s_a = np.append(s,prev_action)
-        s_a = torch.FloatTensor(utils.state_1d_flat(s_a)).to(device)
+        s_a = torch.FloatTensor(s_a).to(device)
 
         # for recording
         if epi_i % video_save_period == 1:
@@ -291,10 +299,13 @@ if __name__ == "__main__":
                 break
 
             t, r, _, s2 = timestep
+            s2 = utils.state_1d_flat(s2)
+
             s2_a = np.append(s2, a)
-            s2_a = torch.FloatTensor(utils.state_1d_flat(s2_a)).to(device)
+            s2_a = torch.FloatTensor(s2_a).to(device)
             replay_buffer.add(s_a.cpu().numpy(), a, r, t, s2_a.cpu().numpy())
 
+            s_a = s2_a
             ep_reward += r
             prev_action = a
 

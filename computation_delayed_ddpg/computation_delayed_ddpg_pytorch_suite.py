@@ -32,11 +32,11 @@ domain_name = "cartpole"
 task_name = "swingup"
 action_gradation = 30
 noise_type = "ou"
-max_episode = 1000
 
-control_stepsize = 20
+control_stepsize = 16
+max_episode = 1000 + int(control_stepsize / 10) * 1000
 
-video_save_period = 10
+video_save_period = 100
 
 record_dir = utils.directory_setting("/home/duju/training/pytorch",domain_name,task_name,control_stepsize)
 
