@@ -15,8 +15,10 @@ import torch.optim as optim
 from dm_control import suite
 import numpy as np
 
+#do not change anything except main, evaluate and hyper parameters
+
 framework = "PyTorch"
-exp_type = "Baseline"
+exp_type = "Computation Delayed"
 actor_lr = 1e-4
 critic_lr = 1e-4
 tau = 1e-3
@@ -26,8 +28,8 @@ sigma_min = 0.1
 sigma_max = 0.5
 gamma = 0.99
 device = torch.device("cuda")
-domain_name = "cheetah"
-task_name = "run"
+domain_name = "cartpole"
+task_name = "swingup"
 action_gradation = 30
 noise_type = "ou"
 max_episode = 2500
