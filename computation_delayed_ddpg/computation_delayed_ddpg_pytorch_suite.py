@@ -32,11 +32,11 @@ domain_name = "cartpole"
 task_name = "swingup"
 action_gradation = 30
 noise_type = "ou"
-max_episode = 2500
+max_episode = 1000
 
-control_stepsize = 1
+control_stepsize = 10
 
-video_save_period = 50
+video_save_period = 10
 
 record_dir = utils.directory_setting("/home/duju/training/pytorch",domain_name,task_name,control_stepsize)
 
@@ -247,6 +247,7 @@ if __name__ == "__main__":
         noise.reset()
         timestep = env.reset()
         ep_reward = 0.0
+        prev_action = np.zeros([action_dim])
 
         # timestep, reward, discount, observation
         _, _, _, s = timestep
@@ -272,7 +273,7 @@ if __name__ == "__main__":
                 a = np.clip(a[0],-1.0, 1.0)
 
             for _ in range(control_stepsize):
-                timestep = env.step(a)
+                timestep = env.step(prev_action)
                 step_i += 1
 
                 if epi_i % video_save_period == 1:
@@ -291,6 +292,7 @@ if __name__ == "__main__":
 
             s = s2
             ep_reward += r
+            prev_action = a
 
         for _ in range(int(1000/control_stepsize)):
             max_q = train(actor_main, critic_main, actor_target, critic_target, replay_buffer, MSEcriterion)
