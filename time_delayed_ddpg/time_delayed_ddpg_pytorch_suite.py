@@ -18,7 +18,7 @@ import numpy as np
 #do not change anything except main, evaluate and hyper parameters
 
 framework = "PyTorch"
-exp_type = "Computation Delayed"
+exp_type = "Time Delayed"
 actor_lr = 1e-4
 critic_lr = 1e-4
 tau = 1e-3
@@ -34,7 +34,7 @@ action_gradation = 30
 noise_type = "ou"
 max_episode = 1000
 
-control_stepsize = 20
+control_stepsize = 10
 
 video_save_period = 10
 
@@ -174,7 +174,6 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
 
     step_i = 0
     ep_reward = 0
-    prev_action = np.zeros([action_dim])
 
     if video_info is not None:
         video_dir = video_info[0]
@@ -191,7 +190,7 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
             a = actor_main.forward(s.view(-1,state_dim)).cpu().numpy()[0]
 
         for _ in range(control_stepsize):
-            timestep = env.step(np.reshape(prev_action,(action_dim,)))
+            timestep = env.step(np.reshape(a,(action_dim,)))
             step_i += 1
 
             if video_info is not None:
@@ -208,7 +207,6 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
 
         s = s2
         ep_reward += r
-        prev_action = a
 
     if video_info is not None:
         video_saver.release()
@@ -229,13 +227,15 @@ if __name__ == "__main__":
 
     MSEcriterion = nn.MSELoss()
 
-    actor_main = DDPGActor(state_dim, action_dim, actor_lr, device)
-    actor_target = DDPGActor(state_dim, action_dim, actor_lr, device)
-    critic_main = DDPGCritic(state_dim, action_dim, critic_lr, device)
-    critic_target = DDPGCritic(state_dim, action_dim, critic_lr, device)
+    state_action_dim = state_dim + action_dim
+    actor_main = DDPGActor(state_action_dim, action_dim, actor_lr, device)
+    actor_target = DDPGActor(state_action_dim, action_dim, actor_lr, device)
+    critic_main = DDPGCritic(state_action_dim, action_dim, critic_lr, device)
+    critic_target = DDPGCritic(state_action_dim, action_dim, critic_lr, device)
 
     target_initialize(actor_main, actor_target)
 
+    # start training agent
     for epi_i in range(1, max_episode + 1):
 
         sigma = np.random.uniform(sigma_min, sigma_max)
@@ -254,8 +254,10 @@ if __name__ == "__main__":
         # timestep, reward, discount, observation
         _, _, _, s = timestep
 
-        s = torch.FloatTensor(utils.state_1d_flat(s)).to(device)
+        s_a = np.append(s,prev_action)
+        s_a = torch.FloatTensor(utils.state_1d_flat(s_a)).to(device)
 
+        # for recording
         if epi_i % video_save_period == 1:
             video_filepath = os.path.join(record_dir, "training_noise_" + str(epi_i) + ".avi")
             video_saver = utils.VideoSaver(video_filepath, int(1.0 / env.control_timestep()), 30, width=320, height=240)
@@ -267,7 +269,7 @@ if __name__ == "__main__":
         while step_i < 1000:
 
             with torch.no_grad():
-                a = actor_main.forward(s.view(-1,state_dim)).cpu().numpy()
+                a = actor_main.forward(s_a.view(-1,state_action_dim)).cpu().numpy()
                 if epi_i < action_gradation+1:
                     a = a * float(epi_i) / float(action_gradation) + noise()
                 else:
@@ -289,24 +291,26 @@ if __name__ == "__main__":
                 break
 
             t, r, _, s2 = timestep
-            s2 = torch.FloatTensor(utils.state_1d_flat(s2)).to(device)
-            replay_buffer.add(s.cpu().numpy(), a, r, t, s2.cpu().numpy())
+            s2_a = np.append(s2, a)
+            s2_a = torch.FloatTensor(utils.state_1d_flat(s2_a)).to(device)
+            replay_buffer.add(s_a.cpu().numpy(), a, r, t, s2_a.cpu().numpy())
 
-            s = s2
             ep_reward += r
             prev_action = a
 
+        # off line training
         for _ in range(int(1000/control_stepsize)):
             max_q = train(actor_main, critic_main, actor_target, critic_target, replay_buffer, MSEcriterion)
 
+        # below is for recording
         max_q_from_laststep = max_q
 
         if epi_i % video_save_period == 1:
             video_saver.release()
-            eval_return = evaluate(actor_main, env, control_stepsize, state_dim, action_dim,\
+            eval_return = evaluate(actor_main, env, control_stepsize, state_action_dim, action_dim,\
                                    video_info=[record_dir,epi_i])
         else:
-            eval_return = evaluate(actor_main, env, control_stepsize, state_dim, action_dim)
+            eval_return = evaluate(actor_main, env, control_stepsize, state_action_dim, action_dim)
 
         rewards_str = str(epi_i) + " *** " + str(ep_reward) + " *** " \
                       + str(max_q_from_laststep) + " *** " + str(eval_return)+"\n"
