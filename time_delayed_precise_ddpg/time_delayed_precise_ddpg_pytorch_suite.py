@@ -18,7 +18,7 @@ import numpy as np
 #do not change anything except main, evaluate and hyper parameters
 
 framework = "PyTorch"
-exp_type = "Time Delayed"
+exp_type = "Time Delayed Precise"
 actor_lr = 1e-4
 critic_lr = 1e-4
 tau = 1e-3
@@ -28,13 +28,16 @@ sigma_min = 0.1
 sigma_max = 0.5
 gamma = 0.99
 device = torch.device("cuda")
-domain_name = "hopper"
-task_name = "hop"
+domain_name = "cartpole"
+task_name = "swingup"
 action_gradation = 30
 noise_type = "ou"
 
-control_stepsize = 1
-max_episode = 5000 + int(control_stepsize / 10) * 1000
+control_stepsize = 100
+actions_per_control = 5
+action_stepsize = control_stepsize / actions_per_control
+assert control_stepsize % actions_per_control == 0
+max_episode = 2000 + int(control_stepsize / 10) * 1000
 
 video_save_period = 100
 
@@ -53,6 +56,8 @@ utils.append_file_writer(record_dir, "exp_detail.txt", "gamma : "+str(gamma)+"\n
 utils.append_file_writer(record_dir, "exp_detail.txt", "domain_name : "+str(domain_name)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "task_name : "+str(task_name)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "control_stepsize : "+str(control_stepsize)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "actions_per_control : "+str(actions_per_control)+"\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "action_stepsize : "+str(action_stepsize)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "action_gradation : "+str(action_gradation)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "noise_type : "+str(noise_type)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "max_episode : "+str(max_episode)+"\n")
@@ -166,11 +171,14 @@ def train(actor_main, critic_main, actor_target, critic_target, replay_buffer, c
 
     return np.max(q.detach().cpu().numpy())
 
-def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info = None):
+#evaluate is difference from TD DDPG
+def evaluate(actor_main, env, control_stepsize, state_dim,action_dim,actions_per_control ,video_info = None):
+
+    action_stepsize = control_stepsize / actions_per_control
 
     timestep = env.reset()
     _, _, _, s = timestep
-    prev_action = np.zeros([action_dim])
+    prev_action = np.zeros([,action_dim])
 
     s = utils.state_1d_flat(s)
     s_a = np.append(s, prev_action)
@@ -226,21 +234,23 @@ if __name__ == "__main__":
 
     state_dim = utils.state_1d_dim_calc(env)[-1]
     action_dim = env.action_spec().shape[-1]
+    control_dim = action_dim * actions_per_control
 
     utils.append_file_writer(record_dir, "exp_detail.txt", "state_dim : " + str(state_dim) + "\n")
     utils.append_file_writer(record_dir, "exp_detail.txt", "action_dim : " + str(action_dim) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "control_dim : " + str(control_dim) + "\n")
 
     replay_buffer = ReplayBuffer.ReplayBuffer(buffer_size=buffer_size)
 
     MSEcriterion = nn.MSELoss()
 
-    state_action_dim = state_dim + action_dim
-    utils.append_file_writer(record_dir, "exp_detail.txt", "state_action_dim : " + str(state_action_dim) + "\n")
+    state_control_dim = state_dim + control_dim
+    utils.append_file_writer(record_dir, "exp_detail.txt", "state_control_dim : " + str(state_control_dim) + "\n")
 
-    actor_main = DDPGActor(state_action_dim, action_dim, actor_lr, device)
-    actor_target = DDPGActor(state_action_dim, action_dim, actor_lr, device)
-    critic_main = DDPGCritic(state_action_dim, action_dim, critic_lr, device)
-    critic_target = DDPGCritic(state_action_dim, action_dim, critic_lr, device)
+    actor_main = DDPGActor(state_control_dim, control_dim, actor_lr, device)
+    actor_target = DDPGActor(state_control_dim, control_dim, actor_lr, device)
+    critic_main = DDPGCritic(state_control_dim, control_dim, critic_lr, device)
+    critic_target = DDPGCritic(state_control_dim, control_dim, critic_lr, device)
 
     target_initialize(actor_main, actor_target)
 
@@ -258,13 +268,13 @@ if __name__ == "__main__":
         noise.reset()
         timestep = env.reset()
         ep_reward = 0.0
-        prev_action = np.zeros([action_dim])
+        prev_action = np.zeros([actions_per_control,action_dim])
 
         # timestep, reward, discount, observation
         _, _, _, s = timestep
         s = utils.state_1d_flat(s)
 
-        s_a = np.append(s,prev_action)
+        s_a = np.append(s,prev_action.reshape([-1]))
         s_a = torch.FloatTensor(s_a).to(device)
 
         # for recording
@@ -279,22 +289,27 @@ if __name__ == "__main__":
         while step_i < 1000:
 
             with torch.no_grad():
-                a = actor_main.forward(s_a.view(-1,state_action_dim)).cpu().numpy()
+                a = actor_main.forward(s_a.view(-1,state_control_dim)).cpu().numpy()
                 if epi_i < action_gradation+1:
-                    a = a * float(epi_i) / float(action_gradation) + noise()
+                    a = a * float(epi_i) / float(action_gradation)
+                    actions = a.reshape(actions_per_control,action_dim) + noise().reshape(1,action_dim)
                 else:
-                    a = a + noise()
-                a = np.clip(a[0],-1.0, 1.0)
-
-            for _ in range(control_stepsize):
-                timestep = env.step(prev_action)
-                step_i += 1
-
-                if epi_i % video_save_period == 1:
-                    frame = env.physics.render(camera_id=0, width=320, height=240)
-                    video_saver.write(utils.RGB2BGR(frame))
+                    actions = a.reshape(actions_per_control, action_dim) + noise().reshape(1, action_dim)
+                #actions : [actions_per_control, action_dim]
+                actions = np.clip(actions,-1.0, 1.0)
 
 
+            for action_iter in range(actions_per_control):
+                for _ in range(action_stepsize):
+                    timestep = env.step(prev_action[action_iter])
+                    step_i += 1
+
+                    if epi_i % video_save_period == 1:
+                        frame = env.physics.render(camera_id=0, width=320, height=240)
+                        video_saver.write(utils.RGB2BGR(frame))
+
+                    if step_i > 1000:
+                        break
                 if step_i > 1000:
                     break
             if step_i > 1000:
@@ -303,7 +318,7 @@ if __name__ == "__main__":
             t, r, _, s2 = timestep
             s2 = utils.state_1d_flat(s2)
 
-            s2_a = np.append(s2, a)
+            s2_a = np.append(s2, a.reshape([-1]))
             s2_a = torch.FloatTensor(s2_a).to(device)
             replay_buffer.add(s_a.cpu().numpy(), a, r, t, s2_a.cpu().numpy())
 
@@ -320,10 +335,10 @@ if __name__ == "__main__":
 
         if epi_i % video_save_period == 1:
             video_saver.release()
-            eval_return = evaluate(actor_main, env, control_stepsize, state_action_dim, action_dim,\
+            eval_return = evaluate(actor_main, env, control_stepsize, state_control_dim, action_dim, actions_per_control,\
                                    video_info=[record_dir,epi_i])
         else:
-            eval_return = evaluate(actor_main, env, control_stepsize, state_action_dim, action_dim)
+            eval_return = evaluate(actor_main, env, control_stepsize, state_control_dim, action_dim, actions_per_control)
 
         rewards_str = str(epi_i) + " *** " + str(ep_reward) + " *** " \
                       + str(max_q_from_laststep) + " *** " + str(eval_return)+"\n"
