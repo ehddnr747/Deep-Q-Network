@@ -28,13 +28,13 @@ sigma_min = 0.1
 sigma_max = 0.5
 gamma = 0.99
 device = torch.device("cuda")
-domain_name = "cheetah"
-task_name = "run"
+domain_name = "hopper"
+task_name = "hop"
 action_gradation = 30
 noise_type = "ou"
 
 control_stepsize = 1
-max_episode = 2000 + int(control_stepsize / 10) * 1000
+max_episode = 5000 + int(control_stepsize / 10) * 1000
 
 video_save_period = 100
 
