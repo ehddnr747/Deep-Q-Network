@@ -18,7 +18,7 @@ import numpy as np
 #do not change anything except main, evaluate and hyper parameters
 
 framework = "PyTorch"
-exp_type = "Time Delayed Precise"
+exp_type = "Time Delayed Precise Recurrent"
 actor_lr = 1e-4
 critic_lr = 1e-4
 tau = 1e-3
@@ -31,8 +31,7 @@ device = torch.device("cuda")
 domain_name = "cartpole"
 task_name = "swingup"
 action_gradation = 30
-noise_type = "gaussian"
-gradient_clip = 0.3
+noise_type = "ou"
 
 control_stepsize = 10
 actions_per_control = 5
@@ -61,36 +60,57 @@ utils.append_file_writer(record_dir, "exp_detail.txt", "control_stepsize : "+str
 utils.append_file_writer(record_dir, "exp_detail.txt", "actions_per_control : "+str(actions_per_control)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "action_stepsize : "+str(action_stepsize)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "action_gradation : "+str(action_gradation)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "gradient_clip : "+str(gradient_clip)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "noise_type : "+str(noise_type)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "max_episode : "+str(max_episode)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "parameterized sigma\n")
 
 utils.append_file_writer(record_dir, "exp_detail.txt", "timely uncorrelated action noise\n")
 
-class DDPGActor(nn.Module):
-    def __init__(self, state_dim, action_dim, actor_lr, device):
-        super(DDPGActor, self).__init__()
+
+class DDPGRecueentActor(nn.Module):
+    def __init__(self, state_dim, action_dim, actions_per_control, actor_lr, device):
+        super(DDPGRecueentActor, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
+        self.actions_per_control = actions_per_control
         self.actor_lr = actor_lr
         self.device = device
 
         self.fc1 = nn.Linear(state_dim, 400).to(device)
         self.fc2 = nn.Linear(400, 300).to(device)
-        self.fc3 = nn.Linear(300, action_dim).to(device)
-        nn.init.uniform_(tensor=self.fc3.weight, a=-3e-3, b=3e-3)
-        nn.init.uniform_(tensor=self.fc3.bias, a=-3e-3, b=3e-3)
+        self.recurrent1 = nn.RNN(input_size=300,
+                                 hidden_size=100,
+                                 num_layers=1,
+                                 nonlinearity='relu',
+                                 bias=True,
+                                 batch_first=False).to(device)
+        self.recurrent2 = nn.RNN(input_size=100,
+                                 hidden_size=action_dim,
+                                 num_layers=1,
+                                 nonlinearity='tanh',
+                                 bias=True,
+                                 batch_first=False).to(device)
+
+        for weights in self.recurrent2.all_weights[0]:
+            nn.init.uniform_(tensor=weights, a=-3e-4, b=3e-4)
 
         self.optimizer = optim.Adam(self.parameters(), lr=actor_lr)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = torch.tanh(self.fc3(x))
+        assert len(x.shape) == 2      #[batch_size, state_control_dim]
+        batch_size = int(x.shape[0])
 
-        return x
+        x = F.relu(self.fc1(x))  # [batch_size, 400]
+        x = F.relu(self.fc2(x))  # [batch_size, 300]
+        x = x.view([1, batch_size, 300]).repeat(
+            [self.actions_per_control, 1, 1])  # [actions_per_control, batch_size, 300]
+        h0_1 = torch.zeros([1, batch_size, 100]).to(device)
+        x, _ = self.recurrent1(x, h0_1)  # [batch_size, actions_per_control, 100]
+        h0_2 = torch.zeros([1, batch_size, self.action_dim]).to(device)
+        x, _ = self.recurrent2(x, h0_2)  # [batch_size, actions_per_control, action_dim]
+
+        return x.view([batch_size, -1])  # [batch_size, control_dim = actions_per_control * action_dim]
 
 
 class DDPGCritic(nn.Module):
@@ -139,7 +159,7 @@ def target_initialize(main, target):
         params_target[pi].data.copy_(params_main[pi].data)
 
 #different from TD DDPG
-def train(actor_main, critic_main, actor_target, critic_target, action_dim,replay_buffer, criterion, gradient_clip):
+def train(actor_main, critic_main, actor_target, critic_target, action_dim,replay_buffer, criterion):
 
     s_batch, a_batch, r_batch, t_batch, s2_batch = replay_buffer.sample_batch(batch_size)
     s_batch = torch.FloatTensor(s_batch).to(device)
@@ -159,7 +179,7 @@ def train(actor_main, critic_main, actor_target, critic_target, action_dim,repla
 
     critic_main.optimizer.zero_grad()
     loss.backward()
-    torch.nn.utils.clip_grad_value_(critic_main.parameters(), gradient_clip)
+    torch.nn.utils.clip_grad_value_(critic_main.parameters(), 1.0)
     critic_main.optimizer.step()
 
     # max_q print
@@ -169,7 +189,7 @@ def train(actor_main, critic_main, actor_target, critic_target, action_dim,repla
     loss = -critic_main.forward(s_batch, a_out).mean()
 
     loss.backward()
-    torch.nn.utils.clip_grad_value_(actor_main.parameters(), gradient_clip)
+    torch.nn.utils.clip_grad_value_(actor_main.parameters(), 1.0)
     actor_main.optimizer.step()
 
     soft_target_update(actor_main, actor_target, tau)
@@ -257,8 +277,8 @@ if __name__ == "__main__":
     state_control_dim = state_dim + control_dim
     utils.append_file_writer(record_dir, "exp_detail.txt", "state_control_dim : " + str(state_control_dim) + "\n")
 
-    actor_main = DDPGActor(state_control_dim, control_dim, actor_lr, device)
-    actor_target = DDPGActor(state_control_dim, control_dim, actor_lr, device)
+    actor_main = DDPGRecueentActor(state_control_dim, action_dim, actions_per_control, actor_lr, device)
+    actor_target = DDPGRecueentActor(state_control_dim, action_dim, actions_per_control, actor_lr, device)
     critic_main = DDPGCritic(state_control_dim, control_dim, critic_lr, device)
     critic_target = DDPGCritic(state_control_dim, control_dim, critic_lr, device)
 
@@ -338,7 +358,7 @@ if __name__ == "__main__":
 
         # off line training
         for _ in range(int(1000/control_stepsize)):
-            max_q = train(actor_main, critic_main, actor_target, critic_target, control_dim, replay_buffer, MSEcriterion, gradient_clip)
+            max_q = train(actor_main, critic_main, actor_target, critic_target, control_dim, replay_buffer, MSEcriterion)
 
         # below is for recording
         max_q_from_laststep = max_q
