@@ -98,7 +98,7 @@ class DDPGRecueentActor(nn.Module):
         self.optimizer = optim.Adam(self.parameters(), lr=actor_lr)
 
     def forward(self, x):
-        assert len(x.shape) == 2      #[batch_size, state_control_dim]
+        assert len(x.shape) == 2  # [batch_size, state_control_dim]
         batch_size = int(x.shape[0])
 
         x = F.relu(self.fc1(x))  # [batch_size, 400]
@@ -106,11 +106,55 @@ class DDPGRecueentActor(nn.Module):
         x = x.view([1, batch_size, 300]).repeat(
             [self.actions_per_control, 1, 1])  # [actions_per_control, batch_size, 300]
         h0_1 = torch.zeros([1, batch_size, 100]).to(device)
-        x, _ = self.recurrent1(x, h0_1)  # [batch_size, actions_per_control, 100]
+        x, _ = self.recurrent1(x, h0_1)  # [actions_per_control, batch_size, 100]
         h0_2 = torch.zeros([1, batch_size, self.action_dim]).to(device)
-        x, _ = self.recurrent2(x, h0_2)  # [batch_size, actions_per_control, action_dim]
+        x, _ = self.recurrent2(x, h0_2)  # [actions_per_control, batch_size, action_dim]
+        x = x.permute(1,0,2) # [batch_size, action_per_control, action_dim]
 
         return x.view([batch_size, -1])  # [batch_size, control_dim = actions_per_control * action_dim]
+
+
+# class DDPGRecueentActor(nn.Module):
+#     def __init__(self, state_dim, action_dim, actions_per_control, actor_lr, device):
+#         super(DDPGRecueentActor, self).__init__()
+#
+#         self.state_dim = state_dim
+#         self.action_dim = action_dim
+#         self.actions_per_control = actions_per_control
+#         self.actor_lr = actor_lr
+#         self.device = device
+#
+#         self.fc1 = nn.Linear(state_dim, 400).to(device)
+#         self.fc2 = nn.Linear(400, 300).to(device)
+#         self.fc3 = nn.Linear(300, 100).to(device)
+#         self.recurrent = nn.RNN(input_size=100,
+#                                  hidden_size=self.action_dim,
+#                                  num_layers=1,
+#                                  nonlinearity='tanh',
+#                                  bias=False,
+#                                  batch_first=False).to(device)
+#
+#         for weights in self.recurrent.all_weights[0]:
+#             nn.init.uniform_(tensor=weights, a=-3e-4, b=3e-4)
+#
+#         self.optimizer = optim.Adam(self.parameters(), lr=actor_lr)
+#
+#
+#     def forward(self, x):
+#         assert len(x.shape) == 2      #[batch_size, state_control_dim]
+#         batch_size = int(x.shape[0])
+#
+#         x = F.relu(self.fc1(x))  # [batch_size, 400]
+#         x = F.relu(self.fc2(x))  # [batch_size, 300]
+#         x = F.relu(self.fc3(x))  # [batch_size, 100]
+#         x = x.view([1, batch_size, 100]).repeat(
+#             [self.actions_per_control, 1, 1])  # [actions_per_control, batch_size, 100]
+#         h0 = torch.zeros([1, batch_size, self.action_dim]).to(device)
+#         x, _ = self.recurrent(x, h0)  # [actions_per_control, batch_size, action_dim]
+#
+#         x = x.permute(1,0,2) # [batch_size, actions_per_control, action_dim]
+#
+#         return x.view([batch_size, -1])  # [batch_size, control_dim = actions_per_control * action_dim]
 
 
 class DDPGCritic(nn.Module):

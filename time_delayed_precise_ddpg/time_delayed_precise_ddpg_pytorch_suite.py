@@ -31,11 +31,11 @@ device = torch.device("cuda")
 domain_name = "cartpole"
 task_name = "swingup"
 action_gradation = 30
-noise_type = "gaussian"
-gradient_clip = 0.3
+noise_type = "ou"
+gradient_clip = 1.0
 
-control_stepsize = 10
-actions_per_control = 5
+control_stepsize = 20
+actions_per_control = 1
 action_stepsize = int(control_stepsize / actions_per_control)
 assert control_stepsize % actions_per_control == 0
 
