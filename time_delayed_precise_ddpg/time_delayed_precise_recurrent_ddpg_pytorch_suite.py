@@ -33,8 +33,8 @@ task_name = "swingup"
 action_gradation = 30
 noise_type = "ou"
 
-control_stepsize = 10
-actions_per_control = 5
+control_stepsize = 20
+actions_per_control = 2
 action_stepsize = int(control_stepsize / actions_per_control)
 assert control_stepsize % actions_per_control == 0
 
@@ -67,9 +67,9 @@ utils.append_file_writer(record_dir, "exp_detail.txt", "parameterized sigma\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "timely uncorrelated action noise\n")
 
 
-class DDPGRecueentActor(nn.Module):
+class DDPGRecurrentActor(nn.Module):
     def __init__(self, state_dim, action_dim, actions_per_control, actor_lr, device):
-        super(DDPGRecueentActor, self).__init__()
+        super(DDPGRecurrentActor, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -77,8 +77,8 @@ class DDPGRecueentActor(nn.Module):
         self.actor_lr = actor_lr
         self.device = device
 
-        self.fc1 = nn.Linear(state_dim, 400).to(device)
-        self.fc2 = nn.Linear(400, 300).to(device)
+        self.fc1 = nn.Linear(state_dim, 300).to(device)
+        self.fc2 = nn.Linear(300, 300).to(device)
         self.recurrent1 = nn.RNN(input_size=300,
                                  hidden_size=100,
                                  num_layers=1,
@@ -93,7 +93,7 @@ class DDPGRecueentActor(nn.Module):
                                  batch_first=False).to(device)
 
         for weights in self.recurrent2.all_weights[0]:
-            nn.init.uniform_(tensor=weights, a=-3e-4, b=3e-4)
+            nn.init.uniform_(tensor=weights, a=-3e-3, b=3e-3)
 
         self.optimizer = optim.Adam(self.parameters(), lr=actor_lr)
 
@@ -101,7 +101,7 @@ class DDPGRecueentActor(nn.Module):
         assert len(x.shape) == 2  # [batch_size, state_control_dim]
         batch_size = int(x.shape[0])
 
-        x = F.relu(self.fc1(x))  # [batch_size, 400]
+        x = F.relu(self.fc1(x))  # [batch_size, 300]
         x = F.relu(self.fc2(x))  # [batch_size, 300]
         x = x.view([1, batch_size, 300]).repeat(
             [self.actions_per_control, 1, 1])  # [actions_per_control, batch_size, 300]
@@ -114,9 +114,9 @@ class DDPGRecueentActor(nn.Module):
         return x.view([batch_size, -1])  # [batch_size, control_dim = actions_per_control * action_dim]
 
 
-# class DDPGRecueentActor(nn.Module):
+# class DDPGRecurrentActor(nn.Module):
 #     def __init__(self, state_dim, action_dim, actions_per_control, actor_lr, device):
-#         super(DDPGRecueentActor, self).__init__()
+#         super(DDPGRecurrentActor, self).__init__()
 #
 #         self.state_dim = state_dim
 #         self.action_dim = action_dim
@@ -321,8 +321,8 @@ if __name__ == "__main__":
     state_control_dim = state_dim + control_dim
     utils.append_file_writer(record_dir, "exp_detail.txt", "state_control_dim : " + str(state_control_dim) + "\n")
 
-    actor_main = DDPGRecueentActor(state_control_dim, action_dim, actions_per_control, actor_lr, device)
-    actor_target = DDPGRecueentActor(state_control_dim, action_dim, actions_per_control, actor_lr, device)
+    actor_main = DDPGRecurrentActor(state_control_dim, action_dim, actions_per_control, actor_lr, device)
+    actor_target = DDPGRecurrentActor(state_control_dim, action_dim, actions_per_control, actor_lr, device)
     critic_main = DDPGCritic(state_control_dim, control_dim, critic_lr, device)
     critic_target = DDPGCritic(state_control_dim, control_dim, critic_lr, device)
 

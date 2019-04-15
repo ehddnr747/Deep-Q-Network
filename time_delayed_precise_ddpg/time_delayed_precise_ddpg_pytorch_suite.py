@@ -35,7 +35,7 @@ noise_type = "ou"
 gradient_clip = 1.0
 
 control_stepsize = 20
-actions_per_control = 1
+actions_per_control = 2
 action_stepsize = int(control_stepsize / actions_per_control)
 assert control_stepsize % actions_per_control == 0
 
