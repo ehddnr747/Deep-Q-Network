@@ -33,8 +33,8 @@ task_name = "swingup"
 action_gradation = 30
 noise_type = "ou"
 
-control_stepsize = 20
-actions_per_control = 2
+control_stepsize = 10
+actions_per_control = 5
 action_stepsize = int(control_stepsize / actions_per_control)
 assert control_stepsize % actions_per_control == 0
 
@@ -64,7 +64,7 @@ utils.append_file_writer(record_dir, "exp_detail.txt", "noise_type : "+str(noise
 utils.append_file_writer(record_dir, "exp_detail.txt", "max_episode : "+str(max_episode)+"\n")
 utils.append_file_writer(record_dir, "exp_detail.txt", "parameterized sigma\n")
 
-utils.append_file_writer(record_dir, "exp_detail.txt", "timely uncorrelated action noise\n")
+utils.append_file_writer(record_dir, "exp_detail.txt", "timely correlated action noise\n")
 
 
 class DDPGRecurrentActor(nn.Module):
@@ -335,7 +335,8 @@ if __name__ == "__main__":
 
         assert noise_type in ["ou","gaussian"]
         if noise_type == "ou":
-            noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([control_dim]), sigma=sigma * np.ones([action_dim]))
+            noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([action_dim]), sigma=sigma, actions_per_control = actions_per_control)
+            #this noise is only for single action, for a control you need to repeat sampling
         else:
             noise = Noise.GaussianNoise(action_dim=control_dim, sigma=sigma)
 
