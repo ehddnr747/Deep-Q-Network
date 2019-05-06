@@ -4,3 +4,4 @@
 __pychache__
 MUJOCO_LOG.TXT
 results/*
+!results/.gitkeep
