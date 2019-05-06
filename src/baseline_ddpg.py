@@ -1,7 +1,5 @@
-import sys
 import os
 
-#Project directory must be included in python path
 import utils.utils as utils
 import utils.graph_reward as graph_reward
 import models.ReplayBuffer as ReplayBuffer
@@ -14,49 +12,19 @@ import torch.optim as optim
 
 from dm_control import suite
 import numpy as np
-
-#do not change anything except main, evaluate and hyper parameters
+import argparse
 
 framework = "PyTorch"
-exp_type = "Computation Delayed"
+exp_type = "Baseline"
+
 actor_lr = 1e-4
 critic_lr = 1e-4
 tau = 1e-3
 batch_size = 100
 buffer_size = 1e6
-sigma_min = 0.1
-sigma_max = 0.5
+sigma = 0.2
 gamma = 0.99
 device = torch.device("cuda")
-domain_name = "cheetah"
-task_name = "run"
-action_gradation = 30
-noise_type = "ou"
-
-control_stepsize = 1
-max_episode = 2000 + int(control_stepsize / 10) * 1000
-
-video_save_period = 100
-
-record_dir = utils.directory_setting("/home/duju/training/pytorch",domain_name,task_name,control_stepsize)
-
-utils.append_file_writer(record_dir, "exp_detail.txt", "exp_type : "+str(exp_type)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "framework : "+str(framework)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "actor_lr : "+str(actor_lr)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "critic_lr : "+str(critic_lr)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "tau : "+str(tau)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "batch_size : "+str(batch_size)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "buffer_size : "+str(buffer_size)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "sigma_min : "+str(sigma_min)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "sigma_max : "+str(sigma_max)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "gamma : "+str(gamma)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "domain_name : "+str(domain_name)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "task_name : "+str(task_name)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "control_stepsize : "+str(control_stepsize)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "action_gradation : "+str(action_gradation)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "noise_type : "+str(noise_type)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "max_episode : "+str(max_episode)+"\n")
-utils.append_file_writer(record_dir, "exp_detail.txt", "parameterized sigma\n")
 
 class DDPGActor(nn.Module):
     def __init__(self, state_dim, action_dim, actor_lr, device):
@@ -82,7 +50,6 @@ class DDPGActor(nn.Module):
 
         return x
 
-
 class DDPGCritic(nn.Module):
     def __init__(self, state_dim, action_dim, critic_lr, device):
         super(DDPGCritic, self).__init__()
@@ -107,7 +74,6 @@ class DDPGCritic(nn.Module):
         x = self.fc3(x)
 
         return x
-
 
 def soft_target_update(main, target, tau):
     params_main = list(main.parameters())
@@ -142,7 +108,7 @@ def train(actor_main, critic_main, actor_target, critic_target, replay_buffer, c
                                               )
         y_i = r_batch.view([-1, 1]) + gamma * next_target_q
 
-    q = critic_main.forward(s_batch, a_batch.view([-1, action_dim]))
+    q = critic_main.forward(s_batch, a_batch.view([-1, actor_main.action_dim]))
 
     loss = criterion(q, y_i)
 
@@ -166,7 +132,7 @@ def train(actor_main, critic_main, actor_target, critic_target, replay_buffer, c
 
     return np.max(q.detach().cpu().numpy())
 
-def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info = None):
+def evaluate(actor_main, env, control_stepsize, state_dim,action_dim):
 
     timestep = env.reset()
     _, _, _, s = timestep
@@ -174,29 +140,14 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
 
     step_i = 0
     ep_reward = 0
-    prev_action = np.zeros([action_dim])
-
-    if video_info is not None:
-        video_dir = video_info[0]
-        epi_i = video_info[1]
-
-        video_filepath = os.path.join(video_dir,"training_"+str(epi_i)+".avi")
-        video_saver = utils.VideoSaver(video_filepath, int(1.0/env.control_timestep()), 30, width=320, height=240)
-
-        frame = env.physics.render(camera_id=0, width=320,height=240)
-        video_saver.write(utils.RGB2BGR(frame))
 
     while step_i < 1000:
         with torch.no_grad():
             a = actor_main.forward(s.view(-1,state_dim)).cpu().numpy()[0]
 
         for _ in range(control_stepsize):
-            timestep = env.step(np.reshape(prev_action,(action_dim,)))
+            timestep = env.step(np.reshape(a,(action_dim,)))
             step_i += 1
-
-            if video_info is not None:
-                frame = env.physics.render(camera_id=0, width=320, height=240)
-                video_saver.write(utils.RGB2BGR(frame))
 
             if step_i > 1000:
                 break
@@ -207,15 +158,55 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim, video_info
         s2 = torch.FloatTensor(utils.state_1d_flat(s2)).to(device)
 
         s = s2
-        ep_reward += r
-        prev_action = a
-
-    if video_info is not None:
-        video_saver.release()
+        ep_reward += r*control_stepsize # normalize episode reward approximately 1000
 
     return ep_reward
 
+
+def save_networks(actor_main, critic_main, actor_target, critic_target, record_dir, iter_i):
+    actor_main_path = os.path.join(record_dir, "actor_main_" + str(iter_i) + ".torch")
+    critic_main_path = os.path.join(record_dir, "critic_main_" + str(iter_i) + ".torch")
+    actor_target_path = os.path.join(record_dir, "actor_target" + str(iter_i) + ".torch")
+    critic_target_path = os.path.join(record_dir, "critic_target_" + str(iter_i) + ".torch")
+
+    torch.save(actor_main, actor_main_path)
+    torch.save(critic_main, critic_main_path)
+    torch.save(actor_target, actor_target_path)
+    torch.save(critic_target, critic_target_path)
+
+    print("Saved networks")
+
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Arguments for Experiment")
+
+    parser.add_argument('--domain', help='which domain?')
+    parser.add_argument('--task', help='which task?')
+    parser.add_argument('--control_stepsize', help='how large the control stepsize?')
+    parser.add_argument('--max_iteration', help="how many iterations?", default=1000000)
+
+    # arguments
+    domain_name = parser.parse_args().domain
+    task_name = parser.parse_args().task
+    control_stepsize = int(parser.parse_args().control_stepsize)
+    max_iteration = int(parser.parse_args().max_iteration)
+    model_save_period = max_iteration / 10
+
+    record_dir = utils.directory_setting("../results", exp_type + "_" + domain_name, task_name, control_stepsize)
+
+    utils.append_file_writer(record_dir, "exp_detail.txt", "exp_type : " + str(exp_type) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "framework : " + str(framework) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "actor_lr : " + str(actor_lr) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "critic_lr : " + str(critic_lr) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "tau : " + str(tau) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "batch_size : " + str(batch_size) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "buffer_size : " + str(buffer_size) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "sigma : " + str(sigma) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "gamma : " + str(gamma) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "domain_name : " + str(domain_name) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "task_name : " + str(task_name) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "control_stepsize : " + str(control_stepsize) + "\n")
+    utils.append_file_writer(record_dir, "exp_detail.txt", "max_iteration : " + str(max_iteration) + "\n")
 
     env = suite.load(domain_name=domain_name, task_name=task_name)
 
@@ -237,55 +228,41 @@ if __name__ == "__main__":
     target_initialize(actor_main, actor_target)
     target_initialize(critic_main, critic_target)
 
-    for epi_i in range(1, max_episode + 1):
+    iter_i = 0
+    epi_i = 0
+    save_flag = False
 
-        sigma = np.random.uniform(sigma_min, sigma_max)
+    while iter_i < max_iteration:
 
-        assert noise_type in ["ou","gaussian"]
-        if noise_type == "ou":
-            noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([action_dim]), sigma=sigma * np.ones([action_dim]))
-        else:
-            noise = Noise.GaussianNoise(action_dim=action_dim, sigma=sigma)
+        noise = Noise.OrnsteinUhlenbeckActionNoise(mu=np.zeros([action_dim]), sigma=sigma)
 
         noise.reset()
         timestep = env.reset()
         ep_reward = 0.0
-        prev_action = np.zeros([action_dim])
 
         # timestep, reward, discount, observation
         _, _, _, s = timestep
 
         s = torch.FloatTensor(utils.state_1d_flat(s)).to(device)
 
-        if epi_i % video_save_period == 1:
-            video_filepath = os.path.join(record_dir, "training_noise_" + str(epi_i) + ".avi")
-            video_saver = utils.VideoSaver(video_filepath, int(1.0 / env.control_timestep()), 30, width=320, height=240)
-
-            frame = env.physics.render(camera_id=0, width=320, height=240)
-            video_saver.write(utils.RGB2BGR(frame))
-
         step_i = 0
         while step_i < 1000:
 
             with torch.no_grad():
-                a = actor_main.forward(s.view(-1,state_dim)).cpu().numpy()
-                if epi_i < action_gradation+1:
-                    a = a * float(epi_i) / float(action_gradation) + noise()
+                if iter_i < 50000:
+                    a = noise().reshape((1,action_dim))
                 else:
+                    a = actor_main.forward(s.view(-1, state_dim)).cpu().numpy()
                     a = a + noise()
                 a = np.clip(a[0],-1.0, 1.0)
 
             for _ in range(control_stepsize):
-                timestep = env.step(prev_action)
+                timestep = env.step(a)
                 step_i += 1
-
-                if epi_i % video_save_period == 1:
-                    frame = env.physics.render(camera_id=0, width=320, height=240)
-                    video_saver.write(utils.RGB2BGR(frame))
-
 
                 if step_i > 1000:
                     break
+
             if step_i > 1000:
                 break
 
@@ -294,24 +271,30 @@ if __name__ == "__main__":
             replay_buffer.add(s.cpu().numpy(), a, r, t, s2.cpu().numpy())
 
             s = s2
-            ep_reward += r
-            prev_action = a
+            ep_reward += r*control_stepsize # normalize episode reward approximately 1000
+
+            if iter_i%model_save_period == 0:
+                save_flag = True
+            iter_i += 1
 
         for _ in range(int(1000/control_stepsize)):
             max_q = train(actor_main, critic_main, actor_target, critic_target, replay_buffer, MSEcriterion)
 
         max_q_from_laststep = max_q
 
-        if epi_i % video_save_period == 1:
-            video_saver.release()
-            eval_return = evaluate(actor_main, env, control_stepsize, state_dim, action_dim,\
-                                   video_info=[record_dir,epi_i])
-        else:
-            eval_return = evaluate(actor_main, env, control_stepsize, state_dim, action_dim)
+        eval_return = evaluate(actor_main, env, control_stepsize, state_dim, action_dim)
 
         rewards_str = str(epi_i) + " *** " + str(ep_reward) + " *** " \
                       + str(max_q_from_laststep) + " *** " + str(eval_return)+"\n"
         utils.append_file_writer(record_dir, "rewards.txt", rewards_str)
 
-        if epi_i % video_save_period == 1:
-            graph_reward.save_graph(record_dir, 1000/control_stepsize)
+        if epi_i % 50 == 0:
+            graph_reward.save_graph(record_dir)
+
+        if save_flag:
+
+            save_networks(actor_main, critic_main, actor_target, critic_target, record_dir, iter_i)
+            save_flag = False
+
+        epi_i += 1
+

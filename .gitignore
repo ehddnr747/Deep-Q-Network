@@ -3,3 +3,4 @@
 *.pyc
 __pychache__
 MUJOCO_LOG.TXT
+results/*

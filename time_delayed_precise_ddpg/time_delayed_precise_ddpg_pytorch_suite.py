@@ -263,6 +263,7 @@ if __name__ == "__main__":
     critic_target = DDPGCritic(state_control_dim, control_dim, critic_lr, device)
 
     target_initialize(actor_main, actor_target)
+    target_initialize(critic_main, critic_target)
 
     # start training agent
     for epi_i in range(1, max_episode + 1):

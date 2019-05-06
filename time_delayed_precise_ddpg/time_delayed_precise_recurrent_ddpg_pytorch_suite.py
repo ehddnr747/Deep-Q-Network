@@ -34,7 +34,7 @@ action_gradation = 30
 noise_type = "ou"
 
 control_stepsize = 10
-actions_per_control = 5
+actions_per_control = 2
 action_stepsize = int(control_stepsize / actions_per_control)
 assert control_stepsize % actions_per_control == 0
 
@@ -327,6 +327,7 @@ if __name__ == "__main__":
     critic_target = DDPGCritic(state_control_dim, control_dim, critic_lr, device)
 
     target_initialize(actor_main, actor_target)
+    target_initialize(critic_main, critic_target)
 
     # start training agent
     for epi_i in range(1, max_episode + 1):

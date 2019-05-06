@@ -6,7 +6,7 @@ import numpy as np
 
 training_dir = "/home/duju/training"
 
-def save_graph(record_dir, reward_scale):
+def save_graph(record_dir, reward_scale=1000):
 
     target_dir = record_dir
 
@@ -59,7 +59,7 @@ def draw(rewards, max_q_values, eval_rewards, reward_scale):
     ax2.set_ylabel('max_q',color=color)
     ax2.plot(t,max_q_values,color=color)
     ax2.tick_params(axis='y',labelcolor=color)
-    ax2.set_ylim([0,np.max([np.max(max_q_values),1.0])])
+    ax2.set_ylim([0,np.max([np.max(max_q_values)*1.05,1.0])])
 
     fig.tight_layout()
 
