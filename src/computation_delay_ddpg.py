@@ -15,7 +15,7 @@ import numpy as np
 import argparse
 
 framework = "PyTorch"
-exp_type = "Baseline"
+exp_type = "Computation_Delay"
 
 actor_lr = 1e-4
 critic_lr = 1e-4
@@ -137,16 +137,18 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim):
     timestep = env.reset()
     _, _, _, s = timestep
     s = torch.FloatTensor(utils.state_1d_flat(s)).to(device)
+    action_dim = actor_main.action_dim
 
     step_i = 0
     ep_reward = 0
+    prev_action = np.zeros([action_dim])
 
     while step_i < 1000:
         with torch.no_grad():
             a = actor_main.forward(s.view(-1,state_dim)).cpu().numpy()[0]
 
         for _ in range(control_stepsize):
-            timestep = env.step(np.reshape(a,(action_dim,)))
+            timestep = env.step(np.reshape(prev_action,(action_dim,)))
             step_i += 1
 
             if step_i > 1000:
@@ -159,6 +161,7 @@ def evaluate(actor_main, env, control_stepsize, state_dim,action_dim):
 
         s = s2
         ep_reward += r*control_stepsize # normalize episode reward approximately 1000
+        prev_action = a
 
     return ep_reward
 
@@ -239,6 +242,7 @@ if __name__ == "__main__":
         noise.reset()
         timestep = env.reset()
         ep_reward = 0.0
+        prev_action = np.zeros([action_dim])
 
         # timestep, reward, discount, observation
         _, _, _, s = timestep
@@ -257,7 +261,7 @@ if __name__ == "__main__":
                 a = np.clip(a[0],-1.0, 1.0)
 
             for _ in range(control_stepsize):
-                timestep = env.step(a)
+                timestep = env.step(prev_action)
                 step_i += 1
 
                 if step_i > 1000:
@@ -272,6 +276,7 @@ if __name__ == "__main__":
 
             s = s2
             ep_reward += r*control_stepsize # normalize episode reward approximately 1000
+            prev_action = a
 
             if iter_i%model_save_period == 0:
                 save_flag = True
